@@ -1,0 +1,27 @@
+**/bin/
+**/obj/
+artifacts/
+TestResults/
+.local/
+.vs/
+.idea/
+*.user
+*.suo
+*.dll
+*.pdb
+__pycache__/
+*.pyc
+node_modules/
+docs/.vitepress/cache/
+docs/.vitepress/dist/
+playwright-report/
+test-results/
+
+# Local agent configuration and planning material do not belong in this repository.
+.agents/
+.codex/
+AGENTS.md
+CLAUDE.md
+GEMINI.md
+docs/engineering-assessment.md
+docs/component-design.md

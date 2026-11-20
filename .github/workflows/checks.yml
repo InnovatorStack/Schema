@@ -1,0 +1,51 @@
+name: Checks
+
+on:
+    push:
+    pull_request:
+    workflow_dispatch:
+    workflow_call:
+
+permissions:
+    contents: read
+
+jobs:
+    check:
+        strategy:
+            fail-fast: false
+            matrix:
+                os: [ubuntu-24.04, windows-latest]
+        runs-on: ${{ matrix.os }}
+        timeout-minutes: 15
+        steps:
+            - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+            - uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
+              with:
+                  global-json-file: global.json
+                  dotnet-version: |
+                      6.0.x
+                      8.0.x
+            - run: dotnet restore --locked-mode
+            - run: python tools/check_dependencies.py
+            - run: dotnet build --configuration Release --no-restore
+            - run: dotnet test --configuration Release --no-build
+            - run: dotnet tests/InnovatorSchema.HostTests/bin/Release/net8.0/InnovatorSchema.HostTests.dll
+            - run: dotnet examples/Prototype/bin/Release/net8.0/InnovatorSchema.Prototype.dll
+            - run: dotnet format --verify-no-changes --no-restore
+            - run: python -m compileall -q tests/live tools
+
+    documentation:
+        runs-on: ubuntu-24.04
+        timeout-minutes: 10
+        steps:
+            - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+            - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+              with:
+                  node-version: 24
+                  cache: npm
+            - run: npm ci
+            - run: npm audit --audit-level=moderate
+            - run: npm run docs:check
+            - run: npm run docs:build
+              env:
+                  DOCS_BASE: /${{ github.event.repository.name }}/

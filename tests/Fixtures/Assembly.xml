@@ -1,0 +1,53 @@
+<Item type="Part" action="calculate">
+  <item_number> P-100 </item_number>
+  <name>Bracket assembly</name>
+  <description is_null="1" />
+  <extra_root>Accepted</extra_root>
+  <Relationships>
+    <Item type="Other Relationship" />
+    <Item type="Part BOM">
+      <quantity>2</quantity>
+      <sort_order>10</sort_order>
+      <extra_line>Accepted</extra_line>
+      <related_id>
+        <Item type="Part">
+          <item_number> P-200 </item_number>
+          <weight>1.25</weight>
+          <is_released>1</is_released>
+          <Relationships>
+            <Item type="Part Document">
+              <related_id>
+                <Item type="Document">
+                  <item_number> D-200 </item_number>
+                  <major_rev>AB</major_rev>
+                  <extra_document>Accepted</extra_document>
+                </Item>
+              </related_id>
+            </Item>
+          </Relationships>
+        </Item>
+      </related_id>
+    </Item>
+    <Item type="Part BOM">
+      <quantity>3</quantity>
+      <sort_order>20</sort_order>
+      <related_id>
+        <Item type="Part">
+          <item_number>P-300</item_number>
+          <weight>0.5</weight>
+          <is_released>0</is_released>
+          <Relationships>
+            <Item type="Part Document">
+              <related_id>
+                <Item type="Document">
+                  <item_number>D-300</item_number>
+                  <major_rev>A</major_rev>
+                </Item>
+              </related_id>
+            </Item>
+          </Relationships>
+        </Item>
+      </related_id>
+    </Item>
+  </Relationships>
+</Item>

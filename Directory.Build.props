@@ -1,0 +1,17 @@
+<Project>
+    <PropertyGroup>
+        <Version>0.1.0</Version>
+        <LangVersion>10.0</LangVersion>
+        <Nullable>enable</Nullable>
+        <ImplicitUsings>disable</ImplicitUsings>
+        <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+        <EnableNETAnalyzers>true</EnableNETAnalyzers>
+        <AnalysisLevel>10.0-recommended</AnalysisLevel>
+        <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+        <GenerateDocumentationFile>true</GenerateDocumentationFile>
+        <Deterministic>true</Deterministic>
+        <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+        <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+        <ContinuousIntegrationBuild Condition="'$(CI)' == 'true'">true</ContinuousIntegrationBuild>
+    </PropertyGroup>
+</Project>

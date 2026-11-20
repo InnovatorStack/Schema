@@ -1,0 +1,14 @@
+<wpf:ResourceDictionary
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:s="clr-namespace:System;assembly=mscorlib"
+    xmlns:wpf="http://schemas.microsoft.com/winfx/2006/xaml/presentation">
+    <s:Boolean x:Key="/Default/CodeInspection/NamespaceProvider/NamespaceFoldersToSkip/=Aras/@EntryIndexedValue">True</s:Boolean>
+    <s:Boolean x:Key="/Default/CodeInspection/NamespaceProvider/NamespaceFoldersToSkip/=Aras_005CInputs/@EntryIndexedValue">True</s:Boolean>
+    <s:Boolean x:Key="/Default/CodeInspection/NamespaceProvider/NamespaceFoldersToSkip/=Aras_005CResults/@EntryIndexedValue">True</s:Boolean>
+    <s:Boolean x:Key="/Default/CodeInspection/NamespaceProvider/NamespaceFoldersToSkip/=Definitions/@EntryIndexedValue">True</s:Boolean>
+    <s:Boolean x:Key="/Default/CodeInspection/NamespaceProvider/NamespaceFoldersToSkip/=Execution/@EntryIndexedValue">True</s:Boolean>
+    <s:Boolean x:Key="/Default/CodeInspection/NamespaceProvider/NamespaceFoldersToSkip/=Inputs/@EntryIndexedValue">True</s:Boolean>
+    <s:Boolean x:Key="/Default/CodeInspection/NamespaceProvider/NamespaceFoldersToSkip/=Results/@EntryIndexedValue">True</s:Boolean>
+    <s:Boolean x:Key="/Default/CodeInspection/NamespaceProvider/NamespaceFoldersToSkip/=Rules/@EntryIndexedValue">True</s:Boolean>
+    <s:Boolean x:Key="/Default/CodeInspection/NamespaceProvider/NamespaceFoldersToSkip/=Schemas/@EntryIndexedValue">True</s:Boolean>
+</wpf:ResourceDictionary>
