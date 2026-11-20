@@ -46,8 +46,12 @@ jobs:
         needs: prepare
         uses: ./.github/workflows/checks.yml
 
+    documentation:
+        needs: prepare
+        uses: ./.github/workflows/documentation-checks.yml
+
     build:
-        needs: checks
+        needs: [checks, documentation]
         runs-on: ubuntu-24.04
         timeout-minutes: 15
         strategy:
