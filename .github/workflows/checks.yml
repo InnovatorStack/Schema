@@ -2,7 +2,34 @@ name: Checks
 
 on:
     push:
+        branches: [main]
+        paths:
+            - 'src/**'
+            - 'tests/**'
+            - 'examples/**'
+            - 'tools/*.py'
+            - 'Directory.Build.*'
+            - 'Directory.Packages.props'
+            - '*.sln*'
+            - 'global.json'
+            - 'NuGet.Config'
+            - 'nuget.config'
+            - '.editorconfig'
+            - '.gitattributes'
     pull_request:
+        paths:
+            - 'src/**'
+            - 'tests/**'
+            - 'examples/**'
+            - 'tools/*.py'
+            - 'Directory.Build.*'
+            - 'Directory.Packages.props'
+            - '*.sln*'
+            - 'global.json'
+            - 'NuGet.Config'
+            - 'nuget.config'
+            - '.editorconfig'
+            - '.gitattributes'
     workflow_dispatch:
     workflow_call:
 
