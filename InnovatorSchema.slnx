@@ -1,0 +1,12 @@
+<Solution>
+    <Folder Name="/src/">
+        <Project Path="src/InnovatorSchema/InnovatorSchema.csproj" />
+    </Folder>
+    <Folder Name="/tests/">
+        <Project Path="tests/InnovatorSchema.Tests/InnovatorSchema.Tests.csproj" />
+        <Project Path="tests/InnovatorSchema.HostTests/InnovatorSchema.HostTests.csproj" />
+    </Folder>
+    <Folder Name="/examples/">
+        <Project Path="examples/Prototype/InnovatorSchema.Prototype.csproj" />
+    </Folder>
+</Solution>

@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <TargetFrameworks>net6.0;net8.0</TargetFrameworks>
+        <IsTestProject>true</IsTestProject>
+        <IsPackable>false</IsPackable>
+        <DefineConstants>$(DefineConstants);ARAS_TESTS</DefineConstants>
+        <NuGetLockFilePath Condition="'$(TestIomPath)' != '' and '$(ArtifactsPath)' != ''">$(ArtifactsPath)/locks/$(MSBuildProjectName).packages.lock.json</NuGetLockFilePath>
+    </PropertyGroup>
+    <ItemGroup>
+        <PackageReference Include="Microsoft.CodeAnalysis.CSharp" PrivateAssets="all" />
+        <PackageReference Include="Microsoft.NET.Test.Sdk" />
+        <PackageReference Include="xunit" />
+        <PackageReference Include="xunit.runner.visualstudio" PrivateAssets="all" />
+        <PackageReference Include="Aras.IOM"
+                          Condition="'$(TestIomPath)' == ''" />
+        <Reference Include="IOM"
+                   Condition="'$(TestIomPath)' != ''">
+            <HintPath>$(TestIomPath)</HintPath>
+            <Private>true</Private>
+        </Reference>
+        <ProjectReference Include="../../src/InnovatorSchema/InnovatorSchema.csproj" />
+        <Compile Include="../../examples/SchemaDeclarations.cs" Link="Examples/SchemaDeclarations.cs" />
+        <Compile Include="../Fixtures/*.cs" Link="Fixtures/%(Filename)%(Extension)" />
+    </ItemGroup>
+</Project>

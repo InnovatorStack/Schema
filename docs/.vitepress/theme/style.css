@@ -1,0 +1,64 @@
+:root {
+  --vp-c-brand-1: #826019;
+  --vp-c-brand-2: #98731e;
+  --vp-c-brand-3: #b98d2b;
+  --vp-c-brand-soft: rgba(185, 141, 43, 0.12);
+  --vp-c-bg: #ffffff;
+  --vp-c-bg-soft: #f7f7f5;
+  --vp-c-text-1: #232420;
+  --vp-c-text-2: #5b5e56;
+  --vp-font-family-base: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --vp-font-family-mono: 'JetBrains Mono', 'SFMono-Regular', Consolas, monospace;
+  --vp-layout-max-width: 1560px;
+  --vp-sidebar-width: 260px;
+}
+
+.dark {
+  --vp-c-brand-1: #e7c36a;
+  --vp-c-brand-2: #d5ad4f;
+  --vp-c-brand-3: #b98d2b;
+  --vp-c-brand-soft: rgba(213, 173, 79, 0.12);
+  --vp-c-bg: #191b18;
+  --vp-c-bg-alt: #151713;
+  --vp-c-bg-soft: #22251f;
+  --vp-c-text-1: #eeeee7;
+  --vp-c-text-2: #b4b8aa;
+}
+
+.VPNavBarTitle .title {
+  font-weight: 650;
+  letter-spacing: -0.035em;
+}
+
+.vp-doc h1 {
+  font-size: 36px;
+  line-height: 1.2;
+  letter-spacing: -0.04em;
+}
+
+.vp-doc h2 {
+  letter-spacing: -0.025em;
+}
+
+.vp-doc p, .vp-doc li {
+  line-height: 1.8;
+}
+
+.vp-doc div[class*='language-'] {
+  border-radius: 6px;
+}
+
+.vp-doc table {
+  width: 100%;
+  font-size: 14px;
+}
+
+.vp-doc th, .vp-doc td {
+  vertical-align: top;
+}
+
+@media (max-width: 639px) {
+  .vp-doc h1 {
+    font-size: 30px;
+  }
+}
