@@ -1,14 +1,11 @@
 # Releases
 
-Choose the archive matching your server's .NET runtime:
+[Downloads](https://github.com/InnovatorStack/Schema/releases)
 
 | Asset | Minimum runtime |
 | --- | --- |
 | `Schema-<version>-net6.0.zip` | .NET 6 |
 | `Schema-<version>-net8.0.zip` | .NET 8 |
-
-Each archive contains `InnovatorSchema.dll`, XML API documentation, installation notes,
-the MIT license and a build manifest. `SHA256SUMS.txt` covers both archives.
 
 ## Manual publication
 
