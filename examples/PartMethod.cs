@@ -1,11 +1,9 @@
 var schema = V.Item("Part")
-    .Property("item_number", V.String().NotBlank("Enter an item number.").MaxLength(64))
-    .Property("weight", V.DecimalText().Min(0m).Optional());
-var result = V.Validate(schema, this);
+    .ID()
+    .Attribute("action", V.Enum("edit", "add", "update"))
+    .Property("item_number", V.String().MaxLength(64).Nullish())
+    .Property("related_id", V.Item("Part").ID())
+    .Property("weight", V.Integer().Min(0, "Weight must be positive or zero."));
 
-if (!result.IsValid)
-{
-    return this.getInnovator().newError(result.GetErrorString());
-}
-
+V.AssertInput(schema, this);
 return this;

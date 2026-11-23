@@ -9,9 +9,12 @@ public class OfflineConnection : DispatchProxy
 {
     public static Innovator CreateInnovator()
     {
-        var connection = Create<IServerConnection, OfflineConnection>();
+        return IomFactory.CreateInnovator(CreateConnection());
+    }
 
-        return IomFactory.CreateInnovator(connection);
+    public static IServerConnection CreateConnection()
+    {
+        return Create<IServerConnection, OfflineConnection>();
     }
 
     protected override object? Invoke(MethodInfo? targetMethod, object?[]? args)

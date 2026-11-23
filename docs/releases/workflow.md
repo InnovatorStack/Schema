@@ -7,7 +7,7 @@ both framework targets and attaches verified archives to a draft release by defa
 
 1. Open the repository's **Actions** tab and select **Release**.
 2. Choose **Run workflow** and the source branch.
-3. Enter a version such as `0.1.0`.
+3. Enter a version such as `0.2.0`.
 4. Keep draft mode enabled while reviewing the artifacts.
 
 The workflow uses the selected commit consistently across jobs. An existing tag or release

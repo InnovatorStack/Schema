@@ -1,75 +1,58 @@
-# API reference
+# API
 
-Use `using InnovatorSchema;` and `using V = InnovatorSchema.Validator;` for these examples.
-The current API validates explicitly selected source formats and returns structured results.
-`Parse` and `SafeParse` create runtime objects with the fields declared by the schema.
+Use `using InnovatorSchema;` and `using V = InnovatorSchema.Validator;`.
 
-## Schemas
+## Item schema
 
-- [String](/api/string)
-- [Decimal](/api/decimal)
-- [DecimalText](/api/decimal-text)
-- [Integer](/api/integer)
-- [IntegerText](/api/integer-text)
-- [Boolean](/api/boolean)
-- [BooleanText](/api/boolean-text)
-- [Object](/api/object)
-- [Array](/api/array)
-- [Item](/api/item)
+```csharp
+var part = V.Item("Part")
+    .ID()
+    .Attribute("action", V.Enum("edit", "add", "update"))
+    .Property("item_number", V.String().MaxLength(64))
+    .Property("related_id", V.Item().ID().Nullish());
+```
 
-## Fields and shapes
+`Item("Part")` requires the exact type. `Item()` accepts any Item type.
+`ID()` requires the ID returned by IOM. `Attribute` and `Property` add a field to a new
+schema. Other fields can remain in the input.
 
-- [Field](/api/field)
-- [Attribute](/api/attribute)
-- [Relationships](/api/relationships)
-- [Property](/api/property)
-- [UnknownProperties](/api/unknown-properties)
+## Scalars
 
-## Rules
+| Call | Accepts |
+| --- | --- |
+| `V.String()` | Nonblank text |
+| `V.Enum("add", "edit")` | One of the strings, with exact casing |
+| `V.Integer()` | Signed 64-bit integer text |
+| `V.Double()` | Finite floating-point text with a period as the decimal separator |
+| `V.Date()` | `yyyy-MM-dd` or `yyyy-MM-ddTHH:mm:ss` |
 
-- [NotBlank](/api/not-blank)
-- [MinLength](/api/min-length)
-- [MaxLength](/api/max-length)
-- [Matches](/api/matches)
-- [Min](/api/min)
-- [Max](/api/max)
-- [MinCount](/api/min-count)
-- [MaxCount](/api/max-count)
-- [Check](/api/check)
-- [And](/api/and)
+`Min` and `Max` set inclusive bounds. `MinLength` and `MaxLength` set string length
+bounds. Pass a message as the second argument to customize a bound's error.
+`Nullish()` permits missing, null, empty or whitespace values on a declared field.
 
-## Pipelines
+```csharp
+var count = V.Integer().Min(0, "Enter a nonnegative count.").Max(100);
+var date = V.Date().Nullish();
+var name = V.String().MinLength(2).MaxLength(64);
+```
 
-- [Optional](/api/optional)
-- [Nullable](/api/nullable)
-- [RequireValue](/api/require-value)
-- [Transform](/api/transform)
-- [TransformNullable](/api/transform-nullable)
-- [WithMessage](/api/with-message)
+## Collections
 
-## Validation
+```csharp
+var batch = V.Array(V.Item("Part").ID()).MinItems(1).MaxItems(50);
+```
 
-- [Parse](/api/parse)
-- [SafeParse](/api/safe-parse)
-- [Validate](/api/validate)
+A single supplied Item is a collection of one for `V.Array`. An empty AML collection or
+IOM “No Items Found” result has zero rows.
 
-- [ValidateJson](/api/validate-json)
-- [ValidateXml](/api/validate-xml)
-- [ValidateAml](/api/validate-aml)
+## AssertInput
 
-## Results and options
+```csharp
+var schema = V.Item("Part").ID();
+var aml = "<Item type='Part' id='783BA98DA5D04BF9AF4B1760826221F0' />";
+V.AssertInput(schema, aml);
+```
 
-- [SafeParseResult](/api/safe-parse-result)
-- [ParsedObject](/api/parsed-object)
-- [ValidationError](/api/validation-error)
-- [ValidationException](/api/validation-exception)
-- [InputFormat](/api/input-format)
-
-- [ValidationResult](/api/validation-result)
-- [ValidatedObject](/api/validated-object)
-- [ValidatedArray](/api/validated-array)
-- [ValidationValue](/api/validation-value)
-- [ValidationIssue](/api/validation-issue)
-- [IssuePath](/api/issue-path)
-- [IssueCode](/api/issue-code)
-- [ValidationOptions](/api/validation-options)
+`AssertInput` accepts either an Item schema or a collection schema, and either AML text
+or an IOM Item. It returns normally on success and throws `ValidationException` on failure.
+The exception exposes `Issues`, `GetIssues()` and `GetErrorString()`.

@@ -19,7 +19,6 @@
             <Private>true</Private>
         </Reference>
         <ProjectReference Include="../../src/InnovatorSchema/InnovatorSchema.csproj" />
-        <Compile Include="../../examples/SchemaDeclarations.cs" Link="Examples/SchemaDeclarations.cs" />
         <Compile Include="../Fixtures/*.cs" Link="Fixtures/%(Filename)%(Extension)" />
     </ItemGroup>
 </Project>

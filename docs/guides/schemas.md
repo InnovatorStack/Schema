@@ -1,64 +1,17 @@
 # Define a schema
 
-A schema reads a value and applies its checks. Factories live on `InnovatorSchema.Validator`,
-usually imported with `using V = InnovatorSchema.Validator;`.
-
-## Scalar values
-
-```csharp
-var code = V.String().NotBlank().MaxLength(64);
-var quantity = V.Decimal().Min(0.001m);
-var count = V.Integer().Min(1L);
-var enabled = V.Boolean();
-```
-
-`Decimal`, `Integer` and `Boolean` require native JSON representations. Their text variants
-read strings such as XML property values:
+`Item("Part")` requires a Part. Use `Item()` when the Item type can vary.
+Add `.ID()` for methods that require a supplied ID. For an `add` that lets Aras
+generate an ID, leave the rule off.
 
 ```csharp
-var weight = V.DecimalText().Min(0m);
-var count = V.IntegerText().Min(1L);
-var enabled = V.BooleanText(BooleanTextFormat.ZeroOne);
+var schema = V.Item()
+    .Attribute("action", V.Enum("add", "edit"))
+    .Property("quantity", V.Integer().Min(1))
+    .Property("weight", V.Double().Min(0.0))
+    .Property("effective_date", V.Date().Nullish());
 ```
 
-Text conversion is exact and culture-independent. It does not trim whitespace. Numeric
-overflow, fractional integers and decimal rounding are validation failures.
-
-## Objects
-
-```csharp
-var schema = V.Object()
-    .Property("item_number", V.String().NotBlank())
-    .Property("quantity", V.Decimal().Min(0.001m));
-
-var result = V.ValidateJson(schema,
-    "{\"item_number\":\"P-100\",\"quantity\":2.5}");
-```
-
-Objects accept undeclared properties by default. Use
-`.UnknownProperties(UnknownPropertyHandling.Reject)` for a strict shape. Extra properties
-are excluded from parsed output.
-
-## Items
-
-```csharp
-var schema = V.Item("Part")
-    .Property("item_number", V.String().NotBlank())
-    .Property("weight", V.DecimalText().Min(0m).Optional());
-```
-
-Item schemas require an exact unqualified Item type. They allow undeclared properties by
-default, accommodating ordinary Aras metadata. Declared nested Items require supplied expansion.
-
-## Arrays
-
-```csharp
-var schema = V.Array(V.String().NotBlank()).MinCount(1).MaxCount(100);
-```
-
-Every entry uses the same element schema. Input order and accepted null positions are retained.
-
-## Finish the shape before the pipeline
-
-Add properties and choose unknown-property handling before whole-object checks or transforms.
-Pipeline operations return a general `Schema<T>` because the output may change type.
+Use the declared field's AML name in `Property` or `Attribute`. Other fields can remain in
+the input. An Item or a one-Item `<AML>` wrapper can satisfy an Item schema. For multiple
+Items, use [a collection schema](/examples/part-batch).

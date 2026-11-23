@@ -1,5 +1,5 @@
 import { defineConfig } from 'vitepress';
-import { apiGroups, slug, guideLinks, exampleLinks } from './navigation.mjs';
+import { guideLinks, exampleLinks } from './navigation.mjs';
 
 const base = process.env.DOCS_BASE || '/';
 if (!base.startsWith('/') || !base.endsWith('/')) {
@@ -26,12 +26,7 @@ export default defineConfig({
         { text: 'Overview', link: '/' },
         ...guideLinks.map(([text, path]) => ({ text, link: `/guides/${path}` }))
       ] },
-      { text: 'API reference', collapsed: true, items: [
-        { text: 'Overview', link: '/api/' },
-        ...apiGroups.map(([text, names]) => ({ text, collapsed: true,
-          items: names.map(name => ({ text: name, link: `/api/${slug(name)}` }))
-        }))
-      ] },
+      { text: 'API reference', link: '/api/' },
       { text: 'Examples', collapsed: true, items: exampleLinks.map(([text, path]) =>
         ({ text, link: `/examples/${path}` })) },
       { text: 'Project', collapsed: true, items: [

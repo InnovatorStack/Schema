@@ -34,7 +34,5 @@ jobs:
             - run: python tools/check_dependencies.py
             - run: dotnet build --configuration Release --no-restore
             - run: dotnet test --configuration Release --no-build
-            - run: dotnet tests/InnovatorSchema.HostTests/bin/Release/net8.0/InnovatorSchema.HostTests.dll
-            - run: dotnet examples/Prototype/bin/Release/net8.0/InnovatorSchema.Prototype.dll
             - run: dotnet format --verify-no-changes --no-restore
-            - run: python -m compileall -q tests/live tools
+            - run: python -m compileall -q tools

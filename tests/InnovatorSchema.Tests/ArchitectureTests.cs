@@ -16,7 +16,7 @@ public sealed class ArchitectureTests
         var assembly = typeof(Validator).Assembly;
 
         Assert.Equal("InnovatorSchema", assembly.GetName().Name);
-        Assert.Same(assembly, typeof(Schema<string>).Assembly);
+        Assert.Same(assembly, typeof(ItemSchema).Assembly);
         Assert.DoesNotContain(assembly.GetReferencedAssemblies(),
             name => name.Name?.StartsWith("InnovatorSchema.", StringComparison.Ordinal) == true);
         Assert.Single(Directory.EnumerateFiles(Path.Combine(RepositoryFiles.Root, "src"),
