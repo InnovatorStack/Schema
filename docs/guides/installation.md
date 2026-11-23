@@ -19,11 +19,7 @@ Restart the Aras application. Invoke a Method using Schema to confirm the DLL lo
 
 ## Install in a subfolder
 
-Reference the DLL's actual path in `method-config.xml`. For example:
-
-```xml
-<name>$(binpath)/X_Utils/InnovatorSchema/InnovatorSchema.dll</name>
-```
+Include the subfolder in the DLL path under `ReferencedAssemblies` in `method-config.xml`.
 
 For a framework-dependent Aras server, add the absolute directory to `APP_PATHS` under
 `runtimeOptions.configProperties` in `Server/bin/Aras.Server.runtimeconfig.json`.
