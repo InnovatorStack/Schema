@@ -3,7 +3,7 @@
 A property can hold its own Item schema. The property's name comes from the declaration.
 
 ```csharp
-var part = V.Item("Part").ID();
+var part = V.Item("Part").ID(V.Guid());
 var schema = V.Item("Part BOM")
     .Property("related_id", part)
     .Property("quantity", V.Integer().Min(1));
@@ -18,4 +18,5 @@ var schema = V.Item("Part BOM")
 </Item>
 ```
 
-Supply an expanded Item for a nested schema. A property containing only an ID is text.
+The ID rule reads the expanded Part's ID. Use `.Property("related_id", V.Guid())`
+when the property contains a bare ID.

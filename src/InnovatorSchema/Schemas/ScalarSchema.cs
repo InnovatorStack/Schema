@@ -8,27 +8,31 @@ namespace InnovatorSchema;
 public sealed class ScalarSchema<T> : Schema
 {
     private readonly ScalarReader<T> read;
+    private readonly string? readRequirement;
     private readonly Rule[] rules;
 
-    internal ScalarSchema(ScalarReader<T> read)
-        : this(read, Array.Empty<Rule>(), false)
+    internal ScalarSchema(ScalarReader<T> read, string? readRequirement = null)
+        : this(read, readRequirement, Array.Empty<Rule>(), false)
     {
     }
 
-    private ScalarSchema(ScalarReader<T> read, Rule[] rules, bool allowsNullish)
+    private ScalarSchema(ScalarReader<T> read, string? readRequirement, Rule[] rules,
+        bool allowsNullish)
         : base(allowsNullish, 1)
     {
         this.read = read;
+        this.readRequirement = readRequirement;
         this.rules = rules;
     }
 
     /// <summary>Accept missing, null, empty and whitespace values.</summary>
     public override ScalarSchema<T> Nullish()
     {
-        return AllowsNullish ? this : new ScalarSchema<T>(read, rules, true);
+        return AllowsNullish ? this : new ScalarSchema<T>(read, readRequirement, rules, true);
     }
 
-    internal ScalarSchema<T> Check(Func<T, bool> check, string message)
+    internal ScalarSchema<T> Check(Func<T, bool> check, string requirement,
+        string? customMessage = null)
     {
         if (rules.Length >= Limits.Rules)
         {
@@ -37,8 +41,8 @@ public sealed class ScalarSchema<T> : Schema
 
         var next = new Rule[rules.Length + 1];
         rules.CopyTo(next, 0);
-        next[^1] = new Rule(check, message);
-        return new ScalarSchema<T>(read, next, AllowsNullish);
+        next[^1] = new Rule(check, requirement, customMessage);
+        return new ScalarSchema<T>(read, readRequirement, next, AllowsNullish);
     }
 
     internal override void Validate(FieldInput input, ValidationContext context)
@@ -58,7 +62,7 @@ public sealed class ScalarSchema<T> : Schema
 
         if (error is not null)
         {
-            context.Add(error);
+            context.Add(error, readRequirement);
             return;
         }
 
@@ -71,7 +75,7 @@ public sealed class ScalarSchema<T> : Schema
 
             if (!rule.Check(value))
             {
-                context.Add(rule.Message);
+                context.AddRule(rule.Requirement, rule.CustomMessage);
             }
         }
     }
@@ -98,7 +102,7 @@ public sealed class ScalarSchema<T> : Schema
 
                 if (child is XmlElement)
                 {
-                    context.Add("Text is required.");
+                    context.Add("Text is required.", "must contain a text value.");
                     return false;
                 }
 
@@ -106,7 +110,7 @@ public sealed class ScalarSchema<T> : Schema
 
                 if (FieldInput.IsText(child) && size > Limits.Characters - length)
                 {
-                    context.Add("Field text limit exceeded.");
+                    context.Add("Field text limit exceeded.", "is too long. Shorten the value.");
                     return false;
                 }
 
@@ -121,12 +125,13 @@ public sealed class ScalarSchema<T> : Schema
 
         if (text?.Length > Limits.Characters)
         {
-            context.Add("Field text limit exceeded.");
+            context.Add("Field text limit exceeded.", "is too long. Shorten the value.");
             return false;
         }
 
         return true;
     }
 
-    private readonly record struct Rule(Func<T, bool> Check, string Message);
+    private readonly record struct Rule(Func<T, bool> Check, string Requirement,
+        string? CustomMessage);
 }

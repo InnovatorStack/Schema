@@ -12,7 +12,7 @@ public static class ScalarRules
         ArgumentNullException.ThrowIfNull(schema);
         CheckBound(minimum);
         return schema.Check(value => value.CompareTo(minimum) >= 0,
-            message ?? FormattableString.Invariant($"Must be at least {minimum}."));
+            FormattableString.Invariant($"must be at least {minimum}."), message);
     }
 
     /// <summary>Require a value at most as large as the maximum.</summary>
@@ -22,7 +22,7 @@ public static class ScalarRules
         ArgumentNullException.ThrowIfNull(schema);
         CheckBound(maximum);
         return schema.Check(value => value.CompareTo(maximum) <= 0,
-            message ?? FormattableString.Invariant($"Must be at most {maximum}."));
+            FormattableString.Invariant($"must be at most {maximum}."), message);
     }
 
     /// <summary>Require at least this many characters.</summary>
@@ -32,7 +32,7 @@ public static class ScalarRules
         ArgumentNullException.ThrowIfNull(schema);
         CheckLength(minimum);
         return schema.Check(value => value.Length >= minimum,
-            message ?? FormattableString.Invariant($"Use at least {minimum} characters."));
+            FormattableString.Invariant($"must contain at least {minimum} characters."), message);
     }
 
     /// <summary>Allow at most this many characters.</summary>
@@ -42,7 +42,7 @@ public static class ScalarRules
         ArgumentNullException.ThrowIfNull(schema);
         CheckLength(maximum);
         return schema.Check(value => value.Length <= maximum,
-            message ?? FormattableString.Invariant($"Use at most {maximum} characters."));
+            FormattableString.Invariant($"must contain at most {maximum} characters."), message);
     }
 
     private static void CheckBound<T>(T value)

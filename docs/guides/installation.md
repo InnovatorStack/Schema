@@ -15,7 +15,15 @@ using InnovatorSchema;
 using V = InnovatorSchema.Validator;
 ```
 
-Restart the Aras application. Invoke a Method using Schema to confirm the DLL loads.
+Restart the Aras application after installation.
+
+## Check the loaded version
+
+Invoke a Method that returns the version of the DLL Aras loaded.
+
+```csharp
+return this.getInnovator().newResult(global::InnovatorSchema.SchemaInfo.GetVersion());
+```
 
 ## Install in a subfolder
 

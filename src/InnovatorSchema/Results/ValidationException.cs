@@ -7,10 +7,12 @@ namespace InnovatorSchema;
 /// <summary>One failed assertion at a location in the supplied AML.</summary>
 public sealed class ValidationIssue
 {
-    internal ValidationIssue(string path, string message)
+    internal ValidationIssue(string path, string message, string userPrefix, string userMessage)
     {
         Path = path;
         Message = message;
+        UserPrefix = userPrefix;
+        UserMessage = userMessage;
     }
 
     /// <summary>The location, such as $.weight or $[2].related_id.@id.</summary>
@@ -18,12 +20,16 @@ public sealed class ValidationIssue
 
     /// <summary>Why this value failed.</summary>
     public string Message { get; }
+
+    internal string UserPrefix { get; }
+    internal string UserMessage { get; }
 }
 
 /// <summary>The supplied AML did not satisfy its schema.</summary>
 public sealed class ValidationException : Exception
 {
-    internal ValidationException(List<ValidationIssue> issues) : base(Format(issues))
+    internal ValidationException(List<ValidationIssue> issues)
+        : base(Format(issues, userFacing: true))
     {
         Issues = issues.AsReadOnly();
     }
@@ -37,26 +43,41 @@ public sealed class ValidationException : Exception
         return Issues;
     }
 
-    /// <summary>Return a readable summary for display.</summary>
+    /// <summary>Return the failure messages with their AML paths.</summary>
     public string GetErrorString()
     {
-        return Message;
+        return Format(Issues, userFacing: false);
     }
 
-    private static string Format(List<ValidationIssue> issues)
+    private static string Format(IReadOnlyList<ValidationIssue> issues, bool userFacing)
     {
         const int maxLength = 8192;
-        var text = new StringBuilder("Schema validation failed.");
+        var text = new StringBuilder(userFacing ? string.Empty : "Schema validation failed.");
 
         foreach (ValidationIssue issue in issues)
         {
-            if ((long)text.Length + issue.Path.Length + issue.Message.Length + 5 > maxLength - 15)
+            string prefix = userFacing ? issue.UserPrefix : issue.Path;
+            string message = userFacing ? issue.UserMessage : issue.Message;
+
+            if ((long)text.Length + prefix.Length + message.Length + 5 > maxLength - 15)
             {
-                text.Append("\n[Truncated]");
+                text.Append(text.Length == 0 ? "[Truncated]" : "\n[Truncated]");
                 break;
             }
 
-            text.Append("\n- ").Append(issue.Path).Append(": ").Append(issue.Message);
+            if (text.Length > 0)
+            {
+                text.Append('\n');
+            }
+
+            if (userFacing)
+            {
+                text.Append(prefix).Append(message);
+            }
+            else
+            {
+                text.Append("- ").Append(prefix).Append(": ").Append(message);
+            }
         }
 
         return text.ToString();

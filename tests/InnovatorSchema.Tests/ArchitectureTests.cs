@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Xunit;
@@ -43,6 +44,17 @@ public sealed class ArchitectureTests
                 name is not ("mscorlib" or "netstandard"));
 
         Assert.Empty(external);
+    }
+
+    [Fact]
+    public void VersionComesFromTheLoadedValidatorAssembly()
+    {
+        var assembly = typeof(Validator).Assembly;
+        var version = assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>();
+
+        Assert.Same(assembly, typeof(SchemaInfo).Assembly);
+        Assert.NotNull(version);
+        Assert.Equal(version.InformationalVersion, SchemaInfo.GetVersion());
     }
 
     [Fact]

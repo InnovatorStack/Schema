@@ -52,6 +52,35 @@ public sealed class ArasIntegrationTests
     }
 
     [Fact]
+    public void IdRuleUsesTheNestedItemsOwnId()
+    {
+        const string parent = "783BA98DA5D04BF9AF4B1760826221F0";
+        const string child = "938599DAAAE34871BFA51167C242DB12";
+        var schema = V.Item("Part").ID(V.Guid()).Property("related_id",
+            V.Item("Part").ID(V.Guid()).Attribute("action", V.Enum("edit")));
+
+        V.AssertInput(schema, ItemFrom(ParentWithChild(parent, child)));
+
+        var error = Assert.Throws<ValidationException>(() =>
+            V.AssertInput(schema, ItemFrom(ParentWithChild(parent, "wrong"))));
+        Assert.Equal("$.related_id.@id", Assert.Single(error.Issues).Path);
+    }
+
+    [Fact]
+    public void UserMessageAndDetailCanBeReturnedAsAnIomError()
+    {
+        var schema = V.Item("Part").Property("weight", V.Integer().Min(3));
+        var input = ItemFrom("<Item type='Part'><weight>2</weight></Item>");
+        var error = Assert.Throws<ValidationException>(() => V.AssertInput(schema, input));
+
+        var fault = input.getInnovator().newError(error.Message);
+        fault.setErrorDetail(error.GetErrorString());
+
+        Assert.Equal("Weight must be at least 3.", fault.getErrorString());
+        Assert.Equal(error.GetErrorString(), fault.getErrorDetail());
+    }
+
+    [Fact]
     public void ARegularIomErrorCannotPassAnArrayAssertion()
     {
         var item = OfflineConnection.CreateInnovator().newError("An operation failed.");
@@ -76,5 +105,11 @@ public sealed class ArasIntegrationTests
         var item = OfflineConnection.CreateInnovator().newItem();
         item.loadAML(aml);
         return item;
+    }
+
+    private static string ParentWithChild(string parent, string child)
+    {
+        return $"<Item type='Part' id='{parent}'><related_id>" +
+            $"<Item type='Part' id='{child}' action='edit'/></related_id></Item>";
     }
 }

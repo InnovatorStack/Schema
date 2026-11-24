@@ -4,7 +4,7 @@ Assert the AML your Aras Innovator Method needs.
 
 ```csharp
 var schema = V.Item("Part")
-    .ID()
+    .ID(V.Guid())
     .Attribute("action", V.Enum("edit", "add", "update"))
     .Property("item_number", V.String().MaxLength(64).Nullish())
     .Property("related_id", V.Item("Part").ID())

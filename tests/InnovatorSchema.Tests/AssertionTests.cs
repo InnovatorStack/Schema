@@ -66,6 +66,113 @@ public sealed class AssertionTests
         }
     }
 
+    [Theory]
+    [InlineData("783BA98DA5D04BF9AF4B1760826221F0", true)]
+    [InlineData("783ba98da5d01bf9af4b1760826221f0", true)]
+    [InlineData("783BA98D-A5D0-4BF9-AF4B-1760826221F0", false)]
+    [InlineData("{783BA98D-A5D0-4BF9-AF4B-1760826221F0}", false)]
+    [InlineData("00000000000000000000000000000000", false)]
+    [InlineData("783BA98DA5D04BF9AF4B1760826221FG", false)]
+    [InlineData(" 783BA98DA5D04BF9AF4B1760826221F0", false)]
+    [InlineData("783BA98DA5D04BF9AF4B1760826221F", false)]
+    [InlineData("", false)]
+    public void GuidChecksTheArasFormatForIdsAndProperties(string id, bool valid)
+    {
+        var schema = V.Item("Part").ID(V.Guid()).ID().Property("related_id", V.Guid());
+        string aml = $"<Item type='Part' id='{id}'><related_id>{id}</related_id></Item>";
+        Exception? error = Record.Exception(() => V.AssertInput(schema, aml));
+
+        if (valid)
+        {
+            Assert.Null(error);
+        }
+        else
+        {
+            Assert.Collection(Assert.IsType<ValidationException>(error).Issues,
+                issue => Assert.Equal("$.@id", issue.Path),
+                issue => Assert.Equal("$.related_id", issue.Path));
+        }
+    }
+
+    [Fact]
+    public void GuidAllowsNullishPropertiesAndRequiresIds()
+    {
+        var guid = V.Guid().Nullish();
+        V.AssertInput(V.Item().Property("related_id", guid), "<Item/>");
+        Assert.Throws<ArgumentException>(() => V.Item().ID(guid));
+    }
+
+    [Fact]
+    public void ExceptionMessageKeepsFieldNamesAndCustomRuleText()
+    {
+        var schema = V.Item("Part").Property("weight", V.Integer().Min(3))
+            .Property("item_number", V.String().MaxLength(3, "Use a shorter part number."));
+        const string aml = "<Item type='Part'><weight>2</weight>" +
+            "<item_number>ABCD</item_number></Item>";
+        var error = Assert.Throws<ValidationException>(() => V.AssertInput(schema, aml));
+
+        Assert.Equal("Weight must be at least 3.\nUse a shorter part number.",
+            error.Message);
+        Assert.Contains("$.weight: Must be at least 3.", error.GetErrorString(),
+            StringComparison.Ordinal);
+        Assert.Equal(2, error.Issues.Count);
+    }
+
+    [Fact]
+    public void InvalidIntegerDisplaysAWholeNumberMessage()
+    {
+        var schema = V.Item("Part").Property("weight", V.Integer().Nullish().Min(3));
+        const string aml = "<Item type='Part'><weight>heavy</weight></Item>";
+        var error = Assert.Throws<ValidationException>(() => V.AssertInput(schema, aml));
+
+        Assert.Equal("Weight must be a whole number.", error.Message);
+        Assert.Contains("$.weight: Expected a signed 64-bit integer.", error.GetErrorString(),
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ScalarFormatErrorsTellTheUserWhatToEnter()
+    {
+        var schema = V.Item("Part").ID(V.Guid())
+            .Property("weight", V.Double())
+            .Property("effective_date", V.Date());
+        const string aml = "<Item type='Part' id='abc'><weight>1,5</weight>" +
+            "<effective_date>tomorrow</effective_date></Item>";
+        var error = Assert.Throws<ValidationException>(() => V.AssertInput(schema, aml));
+
+        Assert.Equal("ID must be a valid Aras ID.\n" +
+            "Weight must be a number. Use a period for decimals.\n" +
+            "Effective date must be a valid date, such as 2026-01-15.", error.Message);
+        Assert.Collection(error.Issues,
+            issue => Assert.Equal("Expected a nonzero, 32-character Aras GUID.", issue.Message),
+            issue => Assert.Equal("Expected a finite number in AML format.", issue.Message),
+            issue => Assert.Equal("Expected yyyy-MM-dd or yyyy-MM-ddTHH:mm:ss.", issue.Message));
+    }
+
+    [Fact]
+    public void InvalidNullMarkerNamesTheFieldInTheExceptionMessage()
+    {
+        var schema = V.Item().Property("weight", V.Integer().Nullish());
+        const string aml = "<Item><weight is_null='yes'/></Item>";
+        var error = Assert.Throws<ValidationException>(() => V.AssertInput(schema, aml));
+
+        Assert.Equal("Weight: Check whether this value should be blank.", error.Message);
+        Assert.Equal("is_null must be 0 or 1.", Assert.Single(error.Issues).Message);
+    }
+
+    [Fact]
+    public void UserMessagesIdentifyTheCollectionRowAndNestedField()
+    {
+        var part = V.Item().Property("weight", V.Integer().Min(3).Nullish());
+        var schema = V.Array(V.Item().Property("related_id", part));
+        const string aml = "<AML><Item><related_id><Item/></related_id></Item>" +
+            "<Item><related_id><Item><weight>2</weight></Item></related_id></Item></AML>";
+        var error = Assert.Throws<ValidationException>(() => V.AssertInput(schema, aml));
+
+        Assert.Equal("Row 2: Related id: Weight must be at least 3.", error.Message);
+        Assert.Equal("$[1].related_id.weight", Assert.Single(error.Issues).Path);
+    }
+
     [Fact]
     public void EachArrayRowAndNestedPropertyHasAnIssuePath()
     {
@@ -79,6 +186,8 @@ public sealed class AssertionTests
         var error = Assert.Throws<ValidationException>(() => V.AssertInput(schema, aml));
 
         Assert.Equal(BatchIssuePaths, error.Issues.Select(issue => issue.Path));
+        Assert.Contains("Row 2: Send an item of type Part.", error.Message,
+            StringComparison.Ordinal);
         Assert.Contains("Use a nonnegative weight.", error.GetErrorString(),
             StringComparison.Ordinal);
         Assert.Same(error.Issues, error.GetIssues());
@@ -94,6 +203,7 @@ public sealed class AssertionTests
         var error = Assert.Throws<ValidationException>(() =>
             V.AssertInput(schema, "<Item type='Part'><some_property type='Part'>a" +
                 "</some_property></Item>"));
+        Assert.Equal("Some property must include one related item.", error.Message);
         Assert.Contains("expanded Item", Assert.Single(error.Issues).Message,
             StringComparison.Ordinal);
     }
@@ -162,9 +272,15 @@ public sealed class AssertionTests
         var schema = V.Item();
         string deep = "<Item>" + string.Concat(Enumerable.Repeat("<x>", 70)) +
             string.Concat(Enumerable.Repeat("</x>", 70)) + "</Item>";
-        Assert.Throws<ValidationException>(() => V.AssertInput(schema, deep));
-        Assert.Throws<ValidationException>(() =>
+        var deepError = Assert.Throws<ValidationException>(() => V.AssertInput(schema, deep));
+        var sizeError = Assert.Throws<ValidationException>(() =>
             V.AssertInput(schema, "<Item>" + new string('x', 1024 * 1024) + "</Item>"));
+
+        Assert.Equal("The request could not be read. Check its format and size.",
+            deepError.Message);
+        Assert.Equal("The request is too large. Reduce the amount of data and try again.",
+            sizeError.Message);
+        Assert.Equal("AML length limit exceeded.", Assert.Single(sizeError.Issues).Message);
     }
 
     private static ItemSchema ScalarShape()

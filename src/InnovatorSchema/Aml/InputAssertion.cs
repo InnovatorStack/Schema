@@ -15,7 +15,8 @@ internal static class InputAssertion
         }
         else if (input is null)
         {
-            context.Add("An AML document or IOM Item is required.");
+            context.AddMessage("An AML document or IOM Item is required.",
+                "Provide the items to check.");
         }
         else
         {
@@ -47,7 +48,8 @@ internal static class InputAssertion
 
         if (!FieldInput.IsElement(root, "AML"))
         {
-            context.Add("AML must have an Item or AML root.");
+            context.AddMessage("AML must have an Item or AML root.",
+                "Send the request as an item or a list of items.");
             return;
         }
 
@@ -78,7 +80,8 @@ internal static class InputAssertion
     {
         if (aml.Length > Limits.Characters)
         {
-            context.Add("AML length limit exceeded.");
+            context.AddMessage("AML length limit exceeded.",
+                "The request is too large. Reduce the amount of data and try again.");
             return null;
         }
 
@@ -101,7 +104,8 @@ internal static class InputAssertion
         }
         catch (XmlException)
         {
-            context.Add("Malformed AML or XML limits exceeded.");
+            context.AddMessage("Malformed AML or XML limits exceeded.",
+                "The request could not be read. Check its format and size.");
             return null;
         }
     }
@@ -117,7 +121,7 @@ internal static class InputAssertion
 
         if (isNull)
         {
-            context.Add("An AML collection cannot be null.");
+            context.AddMessage("An AML collection cannot be null.", "Provide an item list.");
             return -1;
         }
 
@@ -131,7 +135,8 @@ internal static class InputAssertion
             }
             else if (FieldInput.IsText(child) && !string.IsNullOrWhiteSpace(child.Value))
             {
-                context.Add("An AML collection can only contain Items.");
+                context.AddMessage("An AML collection can only contain Items.",
+                    "The list must contain items only.");
                 return -1;
             }
         }
@@ -146,7 +151,8 @@ internal static class InputAssertion
 
         if (count < 0)
         {
-            context.Add("An IOM error or result without Items cannot be validated.");
+            context.AddMessage("An IOM error or result without Items cannot be validated.",
+                "Provide items from a successful request.");
             return;
         }
 
@@ -172,7 +178,8 @@ internal static class InputAssertion
 
         if (count > Limits.Items)
         {
-            context.Add("Item collection limit exceeded.");
+            context.AddMessage("Item collection limit exceeded.",
+                "Split the items into smaller batches and try again.");
             return false;
         }
 
@@ -184,7 +191,7 @@ internal static class InputAssertion
 
         if (count != 1)
         {
-            context.Add("Exactly one Item is required.");
+            context.AddMessage("Exactly one Item is required.", "Provide exactly one item.");
             return false;
         }
 
@@ -198,7 +205,7 @@ internal static class InputAssertion
 
         if (node is null || !FieldInput.IsElement(node, "Item"))
         {
-            context.Add("An Item is required.");
+            context.AddMessage("An Item is required.", "Provide an item.");
             return;
         }
 
@@ -208,7 +215,7 @@ internal static class InputAssertion
         {
             if (isNull)
             {
-                context.Add("An Item cannot be null.");
+                context.AddMessage("An Item cannot be null.", "Provide an item for this entry.");
             }
             else
             {

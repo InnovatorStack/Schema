@@ -1,8 +1,8 @@
 # Define a schema
 
 `Item("Part")` requires a Part. Use `Item()` when the Item type can vary.
-Add `.ID()` for methods that require a supplied ID. For an `add` that lets Aras
-generate an ID, leave the rule off.
+Add `.ID()` to require a supplied ID. Use `.ID(V.Guid())` to require the 32-character
+Aras GUID format as well. For an `add` that lets Aras generate an ID, leave the rule off.
 
 ```csharp
 var schema = V.Item()

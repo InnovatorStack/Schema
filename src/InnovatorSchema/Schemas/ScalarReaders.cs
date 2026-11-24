@@ -37,7 +37,7 @@ internal static class ScalarReaders
             }
         }
 
-        string message = "Expected one of: " + string.Join(", ", values) + ".";
+        string message = "must be one of " + string.Join(", ", values) + ".";
         return new ScalarSchema<string>(String).Check(choices.Contains, message);
     }
 
@@ -60,5 +60,12 @@ internal static class ScalarReaders
     {
         return DateTime.TryParseExact(text, DateFormats, CultureInfo.InvariantCulture,
             DateTimeStyles.None, out value) ? null : "Expected yyyy-MM-dd or yyyy-MM-ddTHH:mm:ss.";
+    }
+
+    public static string? ReadGuid(string text, out Guid value)
+    {
+        value = Guid.Empty;
+        return text.Length == 32 && Guid.TryParseExact(text, "N", out value) &&
+            value != Guid.Empty ? null : "Expected a nonzero, 32-character Aras GUID.";
     }
 }

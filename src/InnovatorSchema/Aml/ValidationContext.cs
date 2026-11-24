@@ -38,7 +38,8 @@ internal sealed class ValidationContext
             return true;
         }
 
-        Add("Validation work limit exceeded.");
+        AddMessage("Validation work limit exceeded.",
+            "The request is too complex. Send fewer items or fields at a time.");
         exhausted = true;
         return false;
     }
@@ -55,7 +56,29 @@ internal sealed class ValidationContext
         return new Scope(this);
     }
 
-    public void Add(string message)
+    public void Add(string message, string? requirement = null)
+    {
+        AddIssue(message, requirement ?? message, requirement is null ? ": " : " ");
+    }
+
+    public void AddMessage(string detail, string userMessage, bool includeField = false)
+    {
+        AddIssue(detail, userMessage, includeField ? ": " : null);
+    }
+
+    public void AddRule(string requirement, string? customMessage)
+    {
+        if (customMessage is null)
+        {
+            Add(Capitalize(requirement), requirement);
+        }
+        else
+        {
+            AddMessage(customMessage, customMessage);
+        }
+    }
+
+    private void AddIssue(string message, string userMessage, string? fieldSeparator)
     {
         if (exhausted)
         {
@@ -63,11 +86,12 @@ internal sealed class ValidationContext
         }
 
         issues ??= new List<ValidationIssue>();
-        issues.Add(new ValidationIssue(Path(), message));
+        issues.Add(new ValidationIssue(Path(), message, UserPrefix(fieldSeparator), userMessage));
 
         if (issues.Count == Limits.Issues)
         {
-            issues.Add(new ValidationIssue("$", "Issue limit exceeded."));
+            issues.Add(new ValidationIssue("$", "Issue limit exceeded.", string.Empty,
+                "More errors were found. Fix the listed values and try again."));
             exhausted = true;
         }
     }
@@ -103,6 +127,37 @@ internal sealed class ValidationContext
         }
 
         return result.ToString();
+    }
+
+    private string UserPrefix(string? fieldSeparator)
+    {
+        var result = new StringBuilder();
+
+        for (int index = 0; index < path.Count; index++)
+        {
+            Segment segment = path[index];
+            string? separator = index == path.Count - 1 ? fieldSeparator : ": ";
+
+            if (segment.Index >= 0)
+            {
+                result.Append("Row ");
+                result.Append((segment.Index + 1).ToString(CultureInfo.InvariantCulture));
+                result.Append(": ");
+            }
+            else if (segment.Name is string name && separator is not null)
+            {
+                string label = segment.Attribute && name == "id" ? "ID" :
+                    Capitalize(name.Replace('_', ' '));
+                result.Append(label).Append(separator);
+            }
+        }
+
+        return result.ToString();
+    }
+
+    private static string Capitalize(string text)
+    {
+        return char.ToUpperInvariant(text[0]) + text[1..];
     }
 
     private readonly record struct Segment(string? Name, bool Attribute, int Index);

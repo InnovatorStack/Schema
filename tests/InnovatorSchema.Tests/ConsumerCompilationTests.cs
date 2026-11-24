@@ -13,7 +13,8 @@ namespace InnovatorSchema.Tests;
 public sealed class ConsumerCompilationTests
 {
     [Theory]
-    [InlineData("PartMethod.cs", "<Item type='Part' id='a' action='edit'><weight>0</weight>" +
+    [InlineData("PartMethod.cs", "<Item type='Part' id='783BA98DA5D04BF9AF4B1760826221F0'" +
+        " action='edit'><weight>0</weight>" +
         "<related_id><Item type='Part' id='b'/></related_id></Item>")]
     [InlineData("PartBatchMethod.cs",
         "<AML><Item type='Part' id='a'><weight>1.5</weight></Item></AML>")]

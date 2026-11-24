@@ -2,8 +2,9 @@
 
 [Downloads](https://github.com/InnovatorStack/Schema/releases)
 
-Version 0.2 uses `AssertInput` for AML and IOM. The previous parsing API is archived
-at [v0.1.0](https://github.com/InnovatorStack/Schema/releases/tag/v0.1.0).
+[Schema 0.3.0](https://github.com/InnovatorStack/Schema/releases/tag/v0.3.0) adds Aras GUID
+validation, readable exception messages, and a DLL version check. The original parsing
+API is archived at [v0.1.0](https://github.com/InnovatorStack/Schema/releases/tag/v0.1.0).
 
 | Asset | Minimum runtime |
 | --- | --- |

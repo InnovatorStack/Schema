@@ -6,20 +6,22 @@ namespace InnovatorSchema;
 /// <summary>An Item with declared properties and attributes.</summary>
 public sealed class ItemSchema : Schema
 {
+    private static readonly ScalarSchema<string> IdPresence = new(ScalarReaders.String);
+
     private readonly string? type;
-    private readonly bool requiresId;
+    private readonly Schema? idSchema;
     private readonly Binding[] fields;
 
     internal ItemSchema(string? type)
-        : this(type, false, Array.Empty<Binding>(), false, 1)
+        : this(type, null, Array.Empty<Binding>(), false, 1)
     {
     }
 
-    private ItemSchema(string? type, bool requiresId, Binding[] fields,
+    private ItemSchema(string? type, Schema? idSchema, Binding[] fields,
         bool allowsNullish, int depth) : base(allowsNullish, depth)
     {
         this.type = type;
-        this.requiresId = requiresId;
+        this.idSchema = idSchema;
         this.fields = fields;
     }
 
@@ -28,7 +30,23 @@ public sealed class ItemSchema : Schema
         Justification = "ID follows IOM getID naming.")]
     public ItemSchema ID()
     {
-        return requiresId ? this : new ItemSchema(type, true, fields, AllowsNullish, Depth);
+        return idSchema is null ? ID(IdPresence) : this;
+    }
+
+    /// <summary>Require an Item ID and check it against the supplied scalar schema.</summary>
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Naming", "CA1709",
+        Justification = "ID follows IOM getID naming.")]
+    public ItemSchema ID<T>(ScalarSchema<T> schema)
+    {
+        ArgumentNullException.ThrowIfNull(schema);
+
+        if (schema.AllowsNullish)
+        {
+            throw new ArgumentException("An ID rule requires a nonblank value.", nameof(schema));
+        }
+
+        return ReferenceEquals(idSchema, schema) ? this :
+            new ItemSchema(type, schema, fields, AllowsNullish, Depth);
     }
 
     /// <summary>Check the named AML attribute.</summary>
@@ -51,7 +69,7 @@ public sealed class ItemSchema : Schema
     /// <summary>Allow this Item to be omitted, null or blank when used as a property.</summary>
     public override ItemSchema Nullish()
     {
-        return AllowsNullish ? this : new ItemSchema(type, requiresId, fields, true, Depth);
+        return AllowsNullish ? this : new ItemSchema(type, idSchema, fields, true, Depth);
     }
 
     private ItemSchema Add(string name, Schema schema, bool attribute)
@@ -85,7 +103,7 @@ public sealed class ItemSchema : Schema
         var next = new Binding[fields.Length + 1];
         fields.CopyTo(next, 0);
         next[^1] = new Binding(name, schema, attribute);
-        return new ItemSchema(type, requiresId, next, AllowsNullish,
+        return new ItemSchema(type, idSchema, next, AllowsNullish,
             Math.Max(Depth, schema.Depth + 1));
     }
 
@@ -134,18 +152,23 @@ public sealed class ItemSchema : Schema
         if (type is not null && item.GetAttribute("type") != type)
         {
             using var scope = context.Enter("type", attribute: true);
-            context.Add("Expected an Item of type " + type + ".");
+            context.AddMessage("Expected an Item of type " + type + ".",
+                "Send an item of type " + type + ".");
             return;
         }
 
-        if (requiresId)
+        if (idSchema is not null)
         {
             using var scope = context.Enter("id", attribute: true);
             string? id = iom is IomItem current ? current.Id : AmlId(item);
 
             if (string.IsNullOrWhiteSpace(id))
             {
-                context.Add("An Item ID is required.");
+                context.Add("An Item ID is required.", "is required.");
+            }
+            else if (!ReferenceEquals(idSchema, IdPresence))
+            {
+                idSchema.Validate(new FieldInput(id, null, null), context);
             }
         }
 
@@ -188,19 +211,15 @@ public sealed class ItemSchema : Schema
                 return false;
             }
 
-            if (child is XmlElement element)
+            if (child is XmlElement element && item is null &&
+                FieldInput.IsElement(element, "Item"))
             {
-                if (item is not null || !FieldInput.IsElement(element, "Item"))
-                {
-                    context.Add("An expanded Item is required.");
-                    return false;
-                }
-
                 item = element;
             }
-            else if (FieldInput.IsText(child) && !string.IsNullOrWhiteSpace(child.Value))
+            else if (child is XmlElement ||
+                (FieldInput.IsText(child) && !string.IsNullOrWhiteSpace(child.Value)))
             {
-                context.Add("An expanded Item is required.");
+                context.Add("An expanded Item is required.", "must include one related item.");
                 return false;
             }
         }
@@ -232,7 +251,8 @@ public sealed class ItemSchema : Schema
                 {
                     if (property is not null)
                     {
-                        context.Add("The property occurs more than once.");
+                        context.Add("The property occurs more than once.",
+                            "has more than one value. Keep just one.");
                         return;
                     }
 

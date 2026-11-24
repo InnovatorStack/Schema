@@ -48,19 +48,27 @@ public static class Validator
     /// <summary>Require a signed 64-bit integer in AML text.</summary>
     public static ScalarSchema<long> Integer()
     {
-        return new ScalarSchema<long>(ScalarReaders.Integer);
+        return new ScalarSchema<long>(ScalarReaders.Integer, "must be a whole number.");
     }
 
     /// <summary>Require a finite floating-point number in AML text.</summary>
     public static ScalarSchema<double> Double()
     {
-        return new ScalarSchema<double>(ScalarReaders.Double);
+        return new ScalarSchema<double>(ScalarReaders.Double,
+            "must be a number. Use a period for decimals.");
     }
 
     /// <summary>Require an AML date or date and time.</summary>
     public static ScalarSchema<DateTime> Date()
     {
-        return new ScalarSchema<DateTime>(ScalarReaders.Date);
+        return new ScalarSchema<DateTime>(ScalarReaders.Date,
+            "must be a valid date, such as 2026-01-15.");
+    }
+
+    /// <summary>Require a nonzero, 32-character Aras GUID.</summary>
+    public static ScalarSchema<Guid> Guid()
+    {
+        return new ScalarSchema<Guid>(ScalarReaders.ReadGuid, "must be a valid Aras ID.");
     }
 
     /// <summary>Assert exactly one Item supplied as AML text or an IOM Item.</summary>

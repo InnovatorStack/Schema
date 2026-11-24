@@ -21,7 +21,8 @@ internal readonly record struct FieldInput(
 
         if (marker.Value != "1")
         {
-            context.Add("is_null must be 0 or 1.");
+            context.AddMessage("is_null must be 0 or 1.",
+                "Check whether this value should be blank.", includeField: true);
             return false;
         }
 
@@ -34,7 +35,8 @@ internal readonly record struct FieldInput(
 
             if (child is XmlElement || (IsText(child) && child.Value?.Length > 0))
             {
-                context.Add("A null property cannot contain content.");
+                context.AddMessage("A null property cannot contain content.",
+                    "Clear the value or mark it as filled in.", includeField: true);
                 return false;
             }
         }
@@ -47,7 +49,7 @@ internal readonly record struct FieldInput(
     {
         if (!allowsNullish)
         {
-            context.Add("A nonblank value is required.");
+            context.Add("A nonblank value is required.", "is required.");
         }
     }
 
