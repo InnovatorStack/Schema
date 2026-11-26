@@ -26,7 +26,7 @@ public static class ScalarRules
     }
 
     /// <summary>Require at least this many characters.</summary>
-    public static ScalarSchema<string> MinLength(this ScalarSchema<string> schema, int minimum,
+    public static ScalarSchema<string> Min(this ScalarSchema<string> schema, int minimum,
         string? message = null)
     {
         ArgumentNullException.ThrowIfNull(schema);
@@ -36,7 +36,7 @@ public static class ScalarRules
     }
 
     /// <summary>Allow at most this many characters.</summary>
-    public static ScalarSchema<string> MaxLength(this ScalarSchema<string> schema, int maximum,
+    public static ScalarSchema<string> Max(this ScalarSchema<string> schema, int maximum,
         string? message = null)
     {
         ArgumentNullException.ThrowIfNull(schema);

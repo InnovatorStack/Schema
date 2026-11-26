@@ -12,6 +12,8 @@ public sealed class ItemSchema : Schema
     private readonly Schema? idSchema;
     private readonly Binding[] fields;
 
+    internal bool HasId => idSchema is not null;
+
     internal ItemSchema(string? type)
         : this(type, null, Array.Empty<Binding>(), false, 1)
     {
@@ -92,12 +94,9 @@ public sealed class ItemSchema : Schema
             throw new ArgumentException("Use an unqualified AML name.", nameof(name), error);
         }
 
-        foreach (Binding field in fields)
+        if (FindField(name, attribute) >= 0)
         {
-            if (field.Name == name && field.IsAttribute == attribute)
-            {
-                throw new ArgumentException("The field is already declared.", nameof(name));
-            }
+            throw new ArgumentException("The field is already declared.", nameof(name));
         }
 
         var next = new Binding[fields.Length + 1];
@@ -107,81 +106,116 @@ public sealed class ItemSchema : Schema
             Math.Max(Depth, schema.Depth + 1));
     }
 
-    internal override void Validate(FieldInput input, ValidationContext context)
+    internal int FindField(string name, bool attribute)
+    {
+        for (int index = 0; index < fields.Length; index++)
+        {
+            if (fields[index].Name == name && fields[index].IsAttribute == attribute)
+            {
+                return index;
+            }
+        }
+
+        return -1;
+    }
+
+    internal override object? Read(FieldInput input, ValidationContext context, bool capture)
     {
         if (!input.TryReadNull(context, out bool isNull))
         {
-            return;
+            return null;
         }
 
         if (isNull || input.Element is not XmlElement property)
         {
             FieldInput.CheckMissing(AllowsNullish, context);
-            return;
+            return null;
         }
 
         if (!TryExpanded(property, context, out XmlElement? item))
         {
-            return;
+            return null;
         }
 
         if (item is null)
         {
             FieldInput.CheckMissing(AllowsNullish, context);
-            return;
+            return null;
         }
 
         var iom = input.Owner?.Expanded(property, item);
         var nested = new FieldInput(null, item, iom);
 
-        if (nested.TryReadNull(context, out bool itemIsNull))
+        if (!nested.TryReadNull(context, out bool itemIsNull))
         {
-            if (itemIsNull)
-            {
-                FieldInput.CheckMissing(AllowsNullish, context);
-            }
-            else
-            {
-                ValidateItem(item, iom, context);
-            }
+            return null;
         }
+
+        if (itemIsNull)
+        {
+            FieldInput.CheckMissing(AllowsNullish, context);
+            return null;
+        }
+
+        return ReadItem(item, iom, context, capture);
     }
 
-    internal void ValidateItem(XmlElement item, IomItem? iom, ValidationContext context)
+    internal ParsedItem? ReadItem(XmlElement item, IomItem? iom, ValidationContext context,
+        bool capture)
     {
         if (type is not null && item.GetAttribute("type") != type)
         {
             using var scope = context.Enter("type", attribute: true);
             context.AddMessage("Expected an Item of type " + type + ".",
                 "Send an item of type " + type + ".");
-            return;
+            return null;
         }
 
-        if (idSchema is not null)
-        {
-            using var scope = context.Enter("id", attribute: true);
-            string? id = iom is IomItem current ? current.Id : AmlId(item);
+        object? id = ReadId(item, iom, context, capture);
+        object?[]? values = capture ? new object?[fields.Length] : null;
 
-            if (string.IsNullOrWhiteSpace(id))
-            {
-                context.Add("An Item ID is required.", "is required.");
-            }
-            else if (!ReferenceEquals(idSchema, IdPresence))
-            {
-                idSchema.Validate(new FieldInput(id, null, null), context);
-            }
-        }
-
-        foreach (Binding field in fields)
+        for (int index = 0; index < fields.Length; index++)
         {
             if (!context.Step())
             {
-                return;
+                return null;
             }
 
+            Binding field = fields[index];
             using var scope = context.Enter(field.Name, field.IsAttribute);
-            field.Validate(item, iom, context);
+            object? value = field.Read(item, iom, context, capture);
+
+            if (values is not null)
+            {
+                values[index] = value;
+            }
         }
+
+        return values is null ? null : new ParsedItem(this, id, values);
+    }
+
+    private object? ReadId(XmlElement item, IomItem? iom, ValidationContext context, bool capture)
+    {
+        if (idSchema is null)
+        {
+            return null;
+        }
+
+        using var scope = context.Enter("id", attribute: true);
+        string? id = iom is IomItem current ? current.Id : AmlId(item);
+
+        if (string.IsNullOrWhiteSpace(id))
+        {
+            context.Add("An Item ID is required.", "is required.");
+            return null;
+        }
+
+        if (ReferenceEquals(idSchema, IdPresence))
+        {
+            return capture ? id : null;
+        }
+
+        return idSchema.Read(new FieldInput(id, null, null), context, capture);
     }
 
     private static string? AmlId(XmlElement item)
@@ -229,13 +263,12 @@ public sealed class ItemSchema : Schema
 
     private readonly record struct Binding(string Name, Schema Schema, bool IsAttribute)
     {
-        public void Validate(XmlElement item, IomItem? iom, ValidationContext context)
+        public object? Read(XmlElement item, IomItem? iom, ValidationContext context, bool capture)
         {
             if (IsAttribute)
             {
-                Schema.Validate(new FieldInput(item.GetAttributeNode(Name)?.Value, null, null),
-                    context);
-                return;
+                return Schema.Read(new FieldInput(item.GetAttributeNode(Name)?.Value, null, null),
+                    context, capture);
             }
 
             XmlElement? property = null;
@@ -244,7 +277,7 @@ public sealed class ItemSchema : Schema
             {
                 if (!context.Step())
                 {
-                    return;
+                    return null;
                 }
 
                 if (child is XmlElement element && FieldInput.IsElement(element, Name))
@@ -253,14 +286,14 @@ public sealed class ItemSchema : Schema
                     {
                         context.Add("The property occurs more than once.",
                             "has more than one value. Keep just one.");
-                        return;
+                        return null;
                     }
 
                     property = element;
                 }
             }
 
-            Schema.Validate(new FieldInput(null, property, iom), context);
+            return Schema.Read(new FieldInput(null, property, iom), context, capture);
         }
     }
 }

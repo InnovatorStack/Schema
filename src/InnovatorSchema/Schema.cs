@@ -15,5 +15,5 @@ public abstract class Schema
     /// <summary>Accept missing, null, empty and whitespace values.</summary>
     public abstract Schema Nullish();
 
-    internal abstract void Validate(FieldInput input, ValidationContext context);
+    internal abstract object? Read(FieldInput input, ValidationContext context, bool capture);
 }

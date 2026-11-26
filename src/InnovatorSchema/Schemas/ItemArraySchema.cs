@@ -18,7 +18,7 @@ public sealed class ItemArraySchema
     internal ItemSchema Item { get; }
 
     /// <summary>Require at least this many Items.</summary>
-    public ItemArraySchema MinItems(int count)
+    public ItemArraySchema Min(int count)
     {
         if (count < 0 || count > maximum)
         {
@@ -29,7 +29,7 @@ public sealed class ItemArraySchema
     }
 
     /// <summary>Allow at most this many Items.</summary>
-    public ItemArraySchema MaxItems(int count)
+    public ItemArraySchema Max(int count)
     {
         if (count < minimum || count > Limits.Items)
         {

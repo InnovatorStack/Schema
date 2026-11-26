@@ -2,9 +2,9 @@
 
 [Downloads](https://github.com/InnovatorStack/Schema/releases)
 
-[Schema 0.3.0](https://github.com/InnovatorStack/Schema/releases/tag/v0.3.0) adds Aras GUID
-validation, readable exception messages, and a DLL version check. The original parsing
-API is archived at [v0.1.0](https://github.com/InnovatorStack/Schema/releases/tag/v0.1.0).
+[Schema 0.4.0](https://github.com/InnovatorStack/Schema/releases/tag/v0.4.0) adds
+`ParseInput` for single Items and batches. Use `Min` and `Max` for string lengths
+and batch sizes when upgrading from 0.3.0.
 
 | Asset | Minimum runtime |
 | --- | --- |

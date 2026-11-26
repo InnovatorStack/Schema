@@ -1,7 +1,7 @@
-- Check Aras IDs with `.ID(V.Guid())` or validate an ID stored in a property.
-- `AssertInput` throws messages like “Weight must be a whole number.” Use
-  `GetErrorString()` for the AML paths and validation details.
-- Call `SchemaInfo.GetVersion()` to see which DLL the Method loaded.
+- Read validated values with `V.ParseInput`. Use `item.weight` or `item["weight"]`
+  on a single Item, a nested Item, or a row in a batch.
+- Use `Min` and `Max` for text lengths and batch sizes, as well as scalar bounds.
+  Update calls that use `MinLength`, `MaxLength`, `MinItems`, or `MaxItems`.
 
 [Installation](https://innovatorstack.github.io/Schema/guides/installation.html) ·
 [API](https://innovatorstack.github.io/Schema/api/)

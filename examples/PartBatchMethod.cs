@@ -3,5 +3,5 @@ var part = V.Item("Part")
     .Property("weight", V.Double().Min(0.0))
     .Property("effective_date", V.Date().Nullish());
 
-V.AssertInput(V.Array(part).MinItems(1), this);
+V.AssertInput(V.Array(part).Min(1), this);
 return this;

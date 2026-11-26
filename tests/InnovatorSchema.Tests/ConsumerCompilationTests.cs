@@ -18,7 +18,20 @@ public sealed class ConsumerCompilationTests
         "<related_id><Item type='Part' id='b'/></related_id></Item>")]
     [InlineData("PartBatchMethod.cs",
         "<AML><Item type='Part' id='a'><weight>1.5</weight></Item></AML>")]
-    public void ExamplesCompileAndRunAgainstTheSelectedIom(string file, string aml)
+    [InlineData("ParsePartMethod.cs",
+        "<Item type='Part'><item_number>P-100</item_number><weight>4</weight></Item>",
+        "P-100 weighs 4")]
+    [InlineData("ParseBomMethod.cs",
+        "<AML><Item type='Part BOM'><quantity>2.5</quantity>" +
+        "<reference_designator>R1</reference_designator><related_id>" +
+        "<Item type='Part' id='783BA98DA5D04BF9AF4B1760826221F0'>" +
+        "<item_number>P-100</item_number><weight>1.5</weight></Item></related_id></Item>" +
+        "<Item type='Part BOM'><quantity>2</quantity><related_id>" +
+        "<Item type='Part' id='938599DAAAE34871BFA51167C242DB12'>" +
+        "<item_number>P-200</item_number><weight>3</weight></Item></related_id></Item></AML>",
+        "P-100 (R1): 3.75\nP-200: 6\nTotal weight: 9.75")]
+    public void ExamplesCompileAndRunAgainstTheSelectedIom(string file, string aml,
+        string? expectedResult = null)
     {
         string body = File.ReadAllText(Path.Combine(RepositoryFiles.Root, "examples", file));
         string source = "using InnovatorSchema; using V = InnovatorSchema.Validator;" +
@@ -34,7 +47,14 @@ public sealed class ConsumerCompilationTests
         input.loadAML(aml);
         var returned = type.GetMethod("Run")!.Invoke(input, null);
 
-        Assert.Same(input, returned);
+        if (expectedResult is null)
+        {
+            Assert.Same(input, returned);
+        }
+        else
+        {
+            Assert.Equal(expectedResult, Assert.IsType<Item>(returned).getResult());
+        }
     }
 
     internal static CSharpCompilation Compile(string source)

@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Xml;
 
@@ -7,11 +9,32 @@ internal static class InputAssertion
 {
     public static void Assert(ItemSchema item, ItemArraySchema? array, object? input)
     {
+        Read(item, array, input, results: null);
+    }
+
+    public static ParsedItem Parse(ItemSchema item, object? input)
+    {
+        var results = new List<ParsedItem>(1);
+        Read(item, null, input, results);
+        return results.Count == 1 ? results[0] :
+            throw new InvalidOperationException("The validated input did not produce an Item.");
+    }
+
+    public static IReadOnlyList<ParsedItem> Parse(ItemArraySchema array, object? input)
+    {
+        var results = new List<ParsedItem>();
+        Read(array.Item, array, input, results);
+        return results.AsReadOnly();
+    }
+
+    private static void Read(ItemSchema item, ItemArraySchema? array, object? input,
+        List<ParsedItem>? results)
+    {
         var context = new ValidationContext();
 
         if (input is string aml)
         {
-            AssertAml(item, array, aml, context);
+            ReadAml(item, array, aml, context, results);
         }
         else if (input is null)
         {
@@ -20,14 +43,14 @@ internal static class InputAssertion
         }
         else
         {
-            AssertIom(item, array, IomItem.Read(input), context);
+            ReadIom(item, array, IomItem.Read(input), context, results);
         }
 
         context.ThrowIfInvalid();
     }
 
-    private static void AssertAml(
-        ItemSchema item, ItemArraySchema? array, string aml, ValidationContext context)
+    private static void ReadAml(ItemSchema item, ItemArraySchema? array, string aml,
+        ValidationContext context, List<ParsedItem>? results)
     {
         XmlElement? root = Load(aml, context);
 
@@ -40,7 +63,7 @@ internal static class InputAssertion
         {
             if (CheckCount(1, array, context))
             {
-                AssertRow(item, array, root, null, 0, context);
+                ReadRow(item, array, root, null, 0, context, results);
             }
 
             return;
@@ -71,7 +94,7 @@ internal static class InputAssertion
                     return;
                 }
 
-                AssertRow(item, array, element, null, index++, context);
+                ReadRow(item, array, element, null, index++, context, results);
             }
         }
     }
@@ -144,8 +167,8 @@ internal static class InputAssertion
         return count;
     }
 
-    private static void AssertIom(
-        ItemSchema item, ItemArraySchema? array, IomItem input, ValidationContext context)
+    private static void ReadIom(ItemSchema item, ItemArraySchema? array, IomItem input,
+        ValidationContext context, List<ParsedItem>? results)
     {
         int count = input.Count;
 
@@ -164,7 +187,7 @@ internal static class InputAssertion
         for (int index = 0; index < count && context.Step(); index++)
         {
             IomItem row = input.At(index);
-            AssertRow(item, array, row.Element, row, index, context);
+            ReadRow(item, array, row.Element, row, index, context, results);
         }
     }
 
@@ -198,8 +221,8 @@ internal static class InputAssertion
         return true;
     }
 
-    private static void AssertRow(ItemSchema item, ItemArraySchema? array, XmlElement? node,
-        IomItem? iom, int index, ValidationContext context)
+    private static void ReadRow(ItemSchema item, ItemArraySchema? array, XmlElement? node,
+        IomItem? iom, int index, ValidationContext context, List<ParsedItem>? results)
     {
         using var scope = array is null ? default(ValidationContext.Scope) : context.Enter(index);
 
@@ -211,16 +234,22 @@ internal static class InputAssertion
 
         var source = new FieldInput(null, node, iom);
 
-        if (source.TryReadNull(context, out bool isNull))
+        if (!source.TryReadNull(context, out bool isNull))
         {
-            if (isNull)
-            {
-                context.AddMessage("An Item cannot be null.", "Provide an item for this entry.");
-            }
-            else
-            {
-                item.ValidateItem(node, iom, context);
-            }
+            return;
+        }
+
+        if (isNull)
+        {
+            context.AddMessage("An Item cannot be null.", "Provide an item for this entry.");
+            return;
+        }
+
+        var parsed = item.ReadItem(node, iom, context, capture: results is not null);
+
+        if (parsed is not null)
+        {
+            results!.Add(parsed);
         }
     }
 }

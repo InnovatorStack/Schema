@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 
 namespace InnovatorSchema;
@@ -69,6 +70,22 @@ public static class Validator
     public static ScalarSchema<Guid> Guid()
     {
         return new ScalarSchema<Guid>(ScalarReaders.ReadGuid, "must be a valid Aras ID.");
+    }
+
+    /// <summary>Read validated values from one Item supplied as AML text or IOM.</summary>
+    /// <exception cref="ValidationException">The input fails validation.</exception>
+    public static dynamic ParseInput(ItemSchema schema, object? input)
+    {
+        ArgumentNullException.ThrowIfNull(schema);
+        return InputAssertion.Parse(schema, input);
+    }
+
+    /// <summary>Read the validated values of every Item in the supplied collection.</summary>
+    /// <exception cref="ValidationException">The input fails validation.</exception>
+    public static IReadOnlyList<dynamic> ParseInput(ItemArraySchema schema, object? input)
+    {
+        ArgumentNullException.ThrowIfNull(schema);
+        return InputAssertion.Parse(schema, input);
     }
 
     /// <summary>Assert exactly one Item supplied as AML text or an IOM Item.</summary>

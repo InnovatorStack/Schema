@@ -49,6 +49,30 @@ public sealed class ArasIntegrationTests
         var selection = item.getItemsByXPath("//Item[@type='Part']");
         V.AssertInput(V.Array(V.Item("Part").ID()), selection);
         V.AssertInput(V.Item("Part").ID(), selection);
+        string id = V.ParseInput(V.Item("Part").ID(), selection).id;
+        Assert.Equal("a", id);
+        var parts = V.ParseInput(V.Array(V.Item("Part").ID()), selection);
+        string firstId = Assert.Single(parts).id;
+        Assert.Equal("a", firstId);
+    }
+
+    [Fact]
+    public void ParsingAnIomItemCapturesValuesWithoutChangingIt()
+    {
+        var schema = V.Item("Part").Property("weight", V.Integer()).Property("related_id",
+            V.Item("Part").ID());
+        var input = ItemFrom("<Item type='Part'><weight>3</weight>" +
+            "<related_id><Item type='Part' id='child'/></related_id></Item>");
+        string before = input.dom.OuterXml;
+
+        var parsed = V.ParseInput(schema, input);
+
+        Assert.Equal(before, input.dom.OuterXml);
+        input.setProperty("weight", "8");
+        long weight = parsed.weight;
+        string relatedId = parsed.related_id.id;
+        Assert.Equal(3L, weight);
+        Assert.Equal("child", relatedId);
     }
 
     [Fact]
@@ -97,6 +121,7 @@ public sealed class ArasIntegrationTests
             "</SOAP-ENV:Envelope>");
         Assert.Equal(0, item.getItemCount());
         V.AssertInput(V.Array(V.Item("Part")), item);
+        Assert.Empty(V.ParseInput(V.Array(V.Item("Part")), item));
         Assert.Throws<ValidationException>(() => V.AssertInput(V.Item("Part"), item));
     }
 

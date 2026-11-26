@@ -45,17 +45,17 @@ public sealed class ScalarSchema<T> : Schema
         return new ScalarSchema<T>(read, readRequirement, next, AllowsNullish);
     }
 
-    internal override void Validate(FieldInput input, ValidationContext context)
+    internal override object? Read(FieldInput input, ValidationContext context, bool capture)
     {
         if (!TryText(input, context, out string? text))
         {
-            return;
+            return null;
         }
 
         if (string.IsNullOrWhiteSpace(text))
         {
             FieldInput.CheckMissing(AllowsNullish, context);
-            return;
+            return null;
         }
 
         string? error = read(text, out T value);
@@ -63,14 +63,14 @@ public sealed class ScalarSchema<T> : Schema
         if (error is not null)
         {
             context.Add(error, readRequirement);
-            return;
+            return null;
         }
 
         foreach (Rule rule in rules)
         {
             if (!context.Step())
             {
-                return;
+                return null;
             }
 
             if (!rule.Check(value))
@@ -78,6 +78,8 @@ public sealed class ScalarSchema<T> : Schema
                 context.AddRule(rule.Requirement, rule.CustomMessage);
             }
         }
+
+        return capture ? value : null;
     }
 
     private static bool TryText(FieldInput input, ValidationContext context, out string? text)

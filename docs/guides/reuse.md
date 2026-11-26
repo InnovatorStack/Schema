@@ -5,8 +5,8 @@ definition for the common fields and extend it for each Method.
 
 ```csharp
 var part = V.Item("Part").ID()
-    .Property("item_number", V.String().MaxLength(64));
+    .Property("item_number", V.String().Max(64));
 
 var update = part.Attribute("action", V.Enum("edit", "update"));
-var lot = V.Array(part).MaxItems(50);
+var lot = V.Array(part).Max(50);
 ```

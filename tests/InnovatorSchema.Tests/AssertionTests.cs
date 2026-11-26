@@ -20,7 +20,7 @@ public sealed class AssertionTests
     public void DeclaredPropertiesRejectNullishByDefault(string property, bool valid)
     {
         string aml = "<Item type='Part'>" + property + "<other>ignored</other></Item>";
-        var schema = V.Item("Part").Property("name", V.String().MaxLength(8));
+        var schema = V.Item("Part").Property("name", V.String().Max(8));
         Exception? error = Record.Exception(() => V.AssertInput(schema, aml));
         Assert.Equal(valid, error is null);
 
@@ -30,7 +30,7 @@ public sealed class AssertionTests
                 .Issues).Path);
         }
 
-        V.AssertInput(V.Item("Part").Property("name", V.String().MaxLength(8).Nullish()), aml);
+        V.AssertInput(V.Item("Part").Property("name", V.String().Max(8).Nullish()), aml);
     }
 
     [Theory]
@@ -106,7 +106,7 @@ public sealed class AssertionTests
     public void ExceptionMessageKeepsFieldNamesAndCustomRuleText()
     {
         var schema = V.Item("Part").Property("weight", V.Integer().Min(3))
-            .Property("item_number", V.String().MaxLength(3, "Use a shorter part number."));
+            .Property("item_number", V.String().Max(3, "Use a shorter part number."));
         const string aml = "<Item type='Part'><weight>2</weight>" +
             "<item_number>ABCD</item_number></Item>";
         var error = Assert.Throws<ValidationException>(() => V.AssertInput(schema, aml));
@@ -261,9 +261,9 @@ public sealed class AssertionTests
         V.AssertInput(item, "<AML><Item type='Part'/></AML>");
         Assert.Throws<ValidationException>(() => V.AssertInput(item, "<AML/>"));
         Assert.Throws<ValidationException>(() => V.AssertInput(item, "<AML><Item/><Item/></AML>"));
-        Assert.Throws<ValidationException>(() => V.AssertInput(array.MinItems(1), "<AML/>"));
+        Assert.Throws<ValidationException>(() => V.AssertInput(array.Min(1), "<AML/>"));
         Assert.Throws<ValidationException>(() =>
-            V.AssertInput(array.MaxItems(0), "<Item type='Part'/>"));
+            V.AssertInput(array.Max(0), "<Item type='Part'/>"));
     }
 
     [Fact]
