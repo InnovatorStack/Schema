@@ -6,7 +6,8 @@ namespace InnovatorSchema;
 /// <summary>An Item with declared properties and attributes.</summary>
 public sealed class ItemSchema : Schema
 {
-    private static readonly ScalarSchema<string> IdPresence = new(ScalarReaders.String);
+    private static readonly ScalarSchema<string> ArasId =
+        new(ScalarReaders.ReadId, "must be a valid Aras ID.");
 
     private readonly string? type;
     private readonly Schema? idSchema;
@@ -15,24 +16,24 @@ public sealed class ItemSchema : Schema
     internal bool HasId => idSchema is not null;
 
     internal ItemSchema(string? type)
-        : this(type, null, Array.Empty<Binding>(), false, 1)
+        : this(type, null, Array.Empty<Binding>(), Presence.Required, 1)
     {
     }
 
     private ItemSchema(string? type, Schema? idSchema, Binding[] fields,
-        bool allowsNullish, int depth) : base(allowsNullish, depth)
+        Presence presence, int depth) : base(presence, depth)
     {
         this.type = type;
         this.idSchema = idSchema;
         this.fields = fields;
     }
 
-    /// <summary>Require the Item to have a nonblank ID.</summary>
+    /// <summary>Require a valid Aras ID and expose the original text when parsing.</summary>
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Naming", "CA1709",
         Justification = "ID follows IOM getID naming.")]
     public ItemSchema ID()
     {
-        return idSchema is null ? ID(IdPresence) : this;
+        return idSchema is null ? ID(ArasId) : this;
     }
 
     /// <summary>Require an Item ID and check it against the supplied scalar schema.</summary>
@@ -42,13 +43,13 @@ public sealed class ItemSchema : Schema
     {
         ArgumentNullException.ThrowIfNull(schema);
 
-        if (schema.AllowsNullish)
+        if (!schema.RequiresValue)
         {
             throw new ArgumentException("An ID rule requires a nonblank value.", nameof(schema));
         }
 
         return ReferenceEquals(idSchema, schema) ? this :
-            new ItemSchema(type, schema, fields, AllowsNullish, Depth);
+            new ItemSchema(type, schema, fields, FieldPresence, Depth);
     }
 
     /// <summary>Check the named AML attribute.</summary>
@@ -68,10 +69,23 @@ public sealed class ItemSchema : Schema
         return Add(name, schema, false);
     }
 
+    /// <summary>Allow this Item to be omitted or null when used as a property.</summary>
+    public override ItemSchema Optional()
+    {
+        return WithPresence(Presence.Optional);
+    }
+
     /// <summary>Allow this Item to be omitted, null or blank when used as a property.</summary>
+    [Obsolete("Use Optional() for missing or null fields and to preserve empty strings.")]
     public override ItemSchema Nullish()
     {
-        return AllowsNullish ? this : new ItemSchema(type, idSchema, fields, true, Depth);
+        return WithPresence(Presence.LegacyNullish);
+    }
+
+    private ItemSchema WithPresence(Presence presence)
+    {
+        return FieldPresence == presence ? this :
+            new ItemSchema(type, idSchema, fields, presence, Depth);
     }
 
     private ItemSchema Add(string name, Schema schema, bool attribute)
@@ -102,7 +116,7 @@ public sealed class ItemSchema : Schema
         var next = new Binding[fields.Length + 1];
         fields.CopyTo(next, 0);
         next[^1] = new Binding(name, schema, attribute);
-        return new ItemSchema(type, idSchema, next, AllowsNullish,
+        return new ItemSchema(type, idSchema, next, FieldPresence,
             Math.Max(Depth, schema.Depth + 1));
     }
 
@@ -128,7 +142,7 @@ public sealed class ItemSchema : Schema
 
         if (isNull || input.Element is not XmlElement property)
         {
-            FieldInput.CheckMissing(AllowsNullish, context);
+            FieldInput.CheckMissing(FieldPresence != Presence.Required, context);
             return null;
         }
 
@@ -139,7 +153,11 @@ public sealed class ItemSchema : Schema
 
         if (item is null)
         {
-            FieldInput.CheckMissing(AllowsNullish, context);
+            if (FieldPresence != Presence.LegacyNullish)
+            {
+                context.Add("An expanded Item is required.", "must include one related item.");
+            }
+
             return null;
         }
 
@@ -153,7 +171,7 @@ public sealed class ItemSchema : Schema
 
         if (itemIsNull)
         {
-            FieldInput.CheckMissing(AllowsNullish, context);
+            FieldInput.CheckMissing(FieldPresence != Presence.Required, context);
             return null;
         }
 
@@ -208,11 +226,6 @@ public sealed class ItemSchema : Schema
         {
             context.Add("An Item ID is required.", "is required.");
             return null;
-        }
-
-        if (ReferenceEquals(idSchema, IdPresence))
-        {
-            return capture ? id : null;
         }
 
         return idSchema.Read(new FieldInput(id, null, null), context, capture);

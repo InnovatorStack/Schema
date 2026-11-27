@@ -21,7 +21,8 @@ public sealed class ParsingTests
             .Property("related_id", V.Item("Part").ID());
         string aml = $"<AML><Item type='Part' id='{id}' action='edit'><action>Review</action>" +
             "<weight>4</weight><cost>1.5</cost><effective_date>2026-11-26</effective_date>" +
-            "<related_id><Item type='Part' id='child'/></related_id><extra>x</extra></Item></AML>";
+            "<related_id><Item type='Part' id='938599DAAAE34871BFA51167C242DB12'/>" +
+            "</related_id><extra>x</extra></Item></AML>";
 
         var part = V.ParseInput(schema, aml);
         object partId = part.id;
@@ -40,20 +41,19 @@ public sealed class ParsingTests
         Assert.Equal(4L, weight);
         Assert.Equal(1.5, Assert.IsType<double>(cost));
         Assert.Equal(new DateTime(2026, 11, 26), Assert.IsType<DateTime>(effectiveDate));
-        Assert.Equal("child", childId);
+        Assert.Equal("938599DAAAE34871BFA51167C242DB12", childId);
         Assert.Throws<KeyNotFoundException>(() => part["extra"]);
         Assert.Throws<RuntimeBinderException>(() => part.extra);
     }
 
     [Theory]
     [InlineData("")]
-    [InlineData("<weight> </weight>")]
     [InlineData("<weight is_null='1'/>")]
-    public void NullishFieldsReturnNullRatherThanADefaultValue(string property)
+    public void OptionalFieldsReturnNullForAbsentOrExplicitNullValues(string property)
     {
-        var schema = V.Item().Property("weight", V.Integer().Nullish())
-            .Property("reference", V.String().Nullish())
-            .Property("related_id", V.Item("Part").Nullish());
+        var schema = V.Item().Property("weight", V.Integer().Optional())
+            .Property("reference", V.String().Optional())
+            .Property("related_id", V.Item("Part").Optional());
         var part = V.ParseInput(schema, "<Item>" + property + "</Item>");
         long? weight = part.weight;
         string? reference = part["reference"];

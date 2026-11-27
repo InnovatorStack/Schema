@@ -1,11 +1,11 @@
 var part = V.Item("Part")
-    .ID(V.Guid())
-    .Property("item_number", V.String().Max(64))
+    .ID()
+    .Property("item_number", V.String().MaxLength(64))
     .Property("weight", V.Double().Min(0.0).Max(10000.0));
 
 var line = V.Item("Part BOM")
     .Property("quantity", V.Double().Min(0.0).Max(10000.0))
-    .Property("reference_designator", V.String().Max(64).Nullish())
+    .Property("reference_designator", V.String().MaxLength(64).Optional())
     .Property("related_id", part);
 
 var lines = V.ParseInput(V.Array(line).Min(1).Max(100), this);

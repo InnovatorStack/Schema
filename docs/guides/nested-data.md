@@ -3,7 +3,7 @@
 A property can hold its own Item schema. The property's name comes from the declaration.
 
 ```csharp
-var part = V.Item("Part").ID(V.Guid());
+var part = V.Item("Part").ID();
 var schema = V.Item("Part BOM")
     .Property("related_id", part)
     .Property("quantity", V.Integer().Min(1));

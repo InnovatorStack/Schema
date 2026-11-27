@@ -12,25 +12,26 @@ public sealed class AssertionTests
         { "$[0].@id", "$[0].@action", "$[0].component.@id", "$[0].weight", "$[1].@type" };
 
     [Theory]
-    [InlineData("", false)]
-    [InlineData("<name is_null='1'/>", false)]
-    [InlineData("<name/>", false)]
-    [InlineData("<name> \t </name>", false)]
-    [InlineData("<name>Bracket</name>", true)]
-    public void DeclaredPropertiesRejectNullishByDefault(string property, bool valid)
+    [InlineData("", false, true)]
+    [InlineData("<name is_null='1'/>", false, true)]
+    [InlineData("<name/>", false, true)]
+    [InlineData("<name> \t </name>", false, false)]
+    [InlineData("<name>Bracket</name>", true, true)]
+    public void StringPresenceRules(string property, bool requiredValid, bool optionalValid)
     {
         string aml = "<Item type='Part'>" + property + "<other>ignored</other></Item>";
-        var schema = V.Item("Part").Property("name", V.String().Max(8));
+        var schema = V.Item("Part").Property("name", V.String().MaxLength(8));
         Exception? error = Record.Exception(() => V.AssertInput(schema, aml));
-        Assert.Equal(valid, error is null);
+        Assert.Equal(requiredValid, error is null);
 
-        if (!valid)
+        if (!requiredValid)
         {
             Assert.Equal("$.name", Assert.Single(Assert.IsType<ValidationException>(error)
                 .Issues).Path);
         }
 
-        V.AssertInput(V.Item("Part").Property("name", V.String().Max(8).Nullish()), aml);
+        var optional = V.Item("Part").Property("name", V.String().MaxLength(8).Optional());
+        Assert.Equal(optionalValid, Record.Exception(() => V.AssertInput(optional, aml)) is null);
     }
 
     [Theory]
@@ -39,22 +40,24 @@ public sealed class AssertionTests
     [InlineData("<n is_null='1'>42</n>")]
     [InlineData("<n is_null='yes'/>")]
     [InlineData("<n>9</n><n>10</n>")]
-    public void NullishDoesNotAllowInvalidSuppliedData(string property)
+    public void OptionalDoesNotAllowInvalidSuppliedData(string property)
     {
-        var schema = V.Item().Property("n", V.Integer().Nullish());
+        var schema = V.Item().Property("n", V.Integer().Optional());
         var error = Assert.Throws<ValidationException>(() =>
             V.AssertInput(schema, "<Item>" + property + "</Item>"));
         Assert.Equal("$.n", Assert.Single(error.Issues).Path);
     }
 
     [Theory]
-    [InlineData("<Item id='123'/>", true)]
-    [InlineData("<Item><id condition='eq'> 123 </id></Item>", true)]
-    [InlineData("<Item id='123'><id>different</id></Item>", true)]
-    [InlineData("<Item><id condition='in'>123</id></Item>", false)]
-    [InlineData("<Item id=' '><id>123</id></Item>", false)]
+    [InlineData("<Item id='783BA98DA5D04BF9AF4B1760826221F0'/>", true)]
+    [InlineData("<Item><id condition='eq'>783BA98DA5D04BF9AF4B1760826221F0</id></Item>", true)]
+    [InlineData("<Item id='783BA98DA5D04BF9AF4B1760826221F0'><id>different</id></Item>", true)]
+    [InlineData("<Item><id condition='in'>783BA98DA5D04BF9AF4B1760826221F0</id></Item>", false)]
+    [InlineData("<Item id=' '><id>783BA98DA5D04BF9AF4B1760826221F0</id></Item>", false)]
+    [InlineData("<Item id='123'/>", false)]
+    [InlineData("<Item id='00000000000000000000000000000000'/>", false)]
     [InlineData("<Item type='Part'/>", false)]
-    public void IdFollowsIomLookupAndRequiresOnlyPresence(string aml, bool valid)
+    public void IdFollowsIomLookupAndRequiresAnArasId(string aml, bool valid)
     {
         Exception? error = Record.Exception(() => V.AssertInput(V.Item().ID(), aml));
         Assert.Equal(valid, error is null);
@@ -95,18 +98,20 @@ public sealed class AssertionTests
     }
 
     [Fact]
-    public void GuidAllowsNullishPropertiesAndRequiresIds()
+    public void GuidAllowsOptionalPropertiesAndRequiresIds()
     {
-        var guid = V.Guid().Nullish();
+        var guid = V.Guid().Optional();
         V.AssertInput(V.Item().Property("related_id", guid), "<Item/>");
         Assert.Throws<ArgumentException>(() => V.Item().ID(guid));
+        var defaultId = V.Guid().Default(Guid.ParseExact("783BA98DA5D04BF9AF4B1760826221F0", "N"));
+        Assert.Throws<ArgumentException>(() => V.Item().ID(defaultId));
     }
 
     [Fact]
     public void ExceptionMessageKeepsFieldNamesAndCustomRuleText()
     {
         var schema = V.Item("Part").Property("weight", V.Integer().Min(3))
-            .Property("item_number", V.String().Max(3, "Use a shorter part number."));
+            .Property("item_number", V.String().MaxLength(3, "Use a shorter part number."));
         const string aml = "<Item type='Part'><weight>2</weight>" +
             "<item_number>ABCD</item_number></Item>";
         var error = Assert.Throws<ValidationException>(() => V.AssertInput(schema, aml));
@@ -121,7 +126,7 @@ public sealed class AssertionTests
     [Fact]
     public void InvalidIntegerDisplaysAWholeNumberMessage()
     {
-        var schema = V.Item("Part").Property("weight", V.Integer().Nullish().Min(3));
+        var schema = V.Item("Part").Property("weight", V.Integer().Optional().Min(3));
         const string aml = "<Item type='Part'><weight>heavy</weight></Item>";
         var error = Assert.Throws<ValidationException>(() => V.AssertInput(schema, aml));
 
@@ -152,7 +157,7 @@ public sealed class AssertionTests
     [Fact]
     public void InvalidNullMarkerNamesTheFieldInTheExceptionMessage()
     {
-        var schema = V.Item().Property("weight", V.Integer().Nullish());
+        var schema = V.Item().Property("weight", V.Integer().Optional());
         const string aml = "<Item><weight is_null='yes'/></Item>";
         var error = Assert.Throws<ValidationException>(() => V.AssertInput(schema, aml));
 
@@ -161,15 +166,15 @@ public sealed class AssertionTests
     }
 
     [Fact]
-    public void UserMessagesIdentifyTheCollectionRowAndNestedField()
+    public void UserMessagesShowTheFieldAndDetailsKeepTheFullLocation()
     {
-        var part = V.Item().Property("weight", V.Integer().Min(3).Nullish());
+        var part = V.Item().Property("weight", V.Integer().Min(3).Optional());
         var schema = V.Array(V.Item().Property("related_id", part));
         const string aml = "<AML><Item><related_id><Item/></related_id></Item>" +
             "<Item><related_id><Item><weight>2</weight></Item></related_id></Item></AML>";
         var error = Assert.Throws<ValidationException>(() => V.AssertInput(schema, aml));
 
-        Assert.Equal("Row 2: Related id: Weight must be at least 3.", error.Message);
+        Assert.Equal("Weight must be at least 3.", error.Message);
         Assert.Equal("$[1].related_id.weight", Assert.Single(error.Issues).Path);
     }
 
@@ -186,8 +191,10 @@ public sealed class AssertionTests
         var error = Assert.Throws<ValidationException>(() => V.AssertInput(schema, aml));
 
         Assert.Equal(BatchIssuePaths, error.Issues.Select(issue => issue.Path));
-        Assert.Contains("Row 2: Send an item of type Part.", error.Message,
+        Assert.Contains("Send an item of type Part.", error.Message,
             StringComparison.Ordinal);
+        Assert.Contains("\nUse a nonnegative weight.\n", error.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain("Row ", error.Message, StringComparison.Ordinal);
         Assert.Contains("Use a nonnegative weight.", error.GetErrorString(),
             StringComparison.Ordinal);
         Assert.Same(error.Issues, error.GetIssues());
@@ -197,8 +204,8 @@ public sealed class AssertionTests
     public void NestedItemsFollowTheDeclaredPropertyName()
     {
         var schema = V.Item("Part").Property("some_property", V.Item().ID());
-        V.AssertInput(schema, "<Item type='Part'><some_property><Item type='Document' id='a'/>" +
-            "</some_property></Item>");
+        V.AssertInput(schema, "<Item type='Part'><some_property>" +
+            "<Item type='Document' id='783BA98DA5D04BF9AF4B1760826221F0'/></some_property></Item>");
 
         var error = Assert.Throws<ValidationException>(() =>
             V.AssertInput(schema, "<Item type='Part'><some_property type='Part'>a" +

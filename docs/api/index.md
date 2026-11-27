@@ -6,37 +6,41 @@ Use `using InnovatorSchema;` and `using V = InnovatorSchema.Validator;`.
 
 ```csharp
 var part = V.Item("Part")
-    .ID(V.Guid())
-    .Attribute("action", V.Enum("edit", "add", "update"))
-    .Property("item_number", V.String().Max(64))
-    .Property("related_id", V.Item().ID().Nullish());
+    .ID()
+    .Attribute("action", V.String().Enum("edit", "add", "update"))
+    .Property("item_number", V.String().MaxLength(64))
+    .Property("related_id", V.Item().ID().Optional());
 ```
 
 `Item("Part")` requires the exact type. `Item()` accepts any Item type.
-`ID()` requires a nonblank ID. `ID(V.Guid())` also checks its format. A nested Item's
-`ID()` always checks that Item's own ID. `Attribute` and `Property` add a field to a
-new schema. Other fields can remain in the input.
+`ID()` requires a valid Aras ID and returns its original text when parsing.
+Use `ID(V.Guid())` to parse it as a `Guid`. A nested Item's `ID()` checks that Item's
+own ID. `Attribute` and `Property` add a field to a new schema. Extra fields are allowed.
 
 ## Scalars
 
 | Call | Accepts |
 | --- | --- |
 | `V.String()` | Nonblank text |
-| `V.Enum("add", "edit")` | One of the strings, with exact casing |
+| `V.String().Enum("add", "edit")` | One of the strings, with exact casing |
 | `V.Integer()` | Signed 64-bit integer text |
 | `V.Double()` | Finite floating-point text with a period as the decimal separator |
 | `V.Date()` | `yyyy-MM-dd` or `yyyy-MM-ddTHH:mm:ss` |
 | `V.Guid()` | Exactly 32 hex characters in either case, with at least one nonzero digit |
 
-`Min` and `Max` set inclusive bounds on values, string length, or the number of
-Items in a collection. Pass a message as the second argument to customize a scalar
-bound's error.
-`Nullish()` permits missing, null, empty or whitespace values on a declared field.
+`Min` and `Max` set inclusive bounds on values and collection sizes. Use
+`MinLength` or `MaxLength` for a one-sided string length, `Length(20)` for an exact
+length, and `Length(1, 250)` for an inclusive range. Pass a message as the last
+argument to customize a scalar bound's error.
+
+`Optional()` permits missing and null values. Optional strings preserve `""`.
+`Default(value)` supplies a validated fallback for a missing or null value.
 
 ```csharp
 var count = V.Integer().Min(0, "Enter a nonnegative count.").Max(100);
-var date = V.Date().Nullish();
-var name = V.String().Min(2).Max(64);
+var date = V.Date().Optional();
+var name = V.String().Length(2, 64);
+var type = V.String().Enum("user", "identity").Default("user");
 ```
 
 ## Collections
@@ -66,9 +70,9 @@ The exception's `Message` is ready to display. Use `GetErrorString()` for AML pa
 ```csharp
 var schema = V.Item("Part")
     .ID(V.Guid())
-    .Property("item_number", V.String().Max(64))
+    .Property("item_number", V.String().MaxLength(64))
     .Property("weight", V.Integer().Min(0))
-    .Property("cost", V.Double().Nullish());
+    .Property("cost", V.Double().Optional());
 
 var aml = "<Item type='Part' id='783BA98DA5D04BF9AF4B1760826221F0'>" +
     "<item_number>P-100</item_number><weight>4</weight></Item>";
@@ -91,7 +95,8 @@ yields text and `.ID(V.Guid())` yields a `Guid`.
 
 The result resolves field names at runtime. String and Enum yield `string`, Integer
 yields `long`, Double yields `double`, Date yields `DateTime`, and Guid yields
-`Guid`. A missing, null, or blank value accepted by `.Nullish()` yields `null`.
+`Guid`. An omitted or explicitly null optional field yields `null`.
+An empty optional string yields `""`.
 The result is a read-only snapshot of those values.
 
 Pass an array schema to get an indexed list of parsed Items.

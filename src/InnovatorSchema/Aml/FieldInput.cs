@@ -45,9 +45,61 @@ internal readonly record struct FieldInput(
         return true;
     }
 
-    public static void CheckMissing(bool allowsNullish, ValidationContext context)
+    public bool TryReadText(ValidationContext context, out string? text)
     {
-        if (!allowsNullish)
+        text = Text;
+
+        if (!TryReadNull(context, out bool isNull))
+        {
+            return false;
+        }
+
+        if (!isNull && Element is XmlElement property)
+        {
+            int length = 0;
+
+            for (XmlNode? child = property.FirstChild; child is not null; child = child.NextSibling)
+            {
+                if (!context.Step())
+                {
+                    return false;
+                }
+
+                if (child is XmlElement)
+                {
+                    context.Add("Text is required.", "must contain a text value.");
+                    return false;
+                }
+
+                int size = child.Value?.Length ?? 0;
+
+                if (IsText(child) && size > Limits.Characters - length)
+                {
+                    context.Add("Field text limit exceeded.", "is too long. Shorten the value.");
+                    return false;
+                }
+
+                if (IsText(child))
+                {
+                    length += size;
+                }
+            }
+
+            text = property.InnerText;
+        }
+
+        if (text?.Length > Limits.Characters)
+        {
+            context.Add("Field text limit exceeded.", "is too long. Shorten the value.");
+            return false;
+        }
+
+        return true;
+    }
+
+    public static void CheckMissing(bool allowed, ValidationContext context)
+    {
+        if (!allowed)
         {
             context.Add("A nonblank value is required.", "is required.");
         }

@@ -1,5 +1,4 @@
 using System;
-using System.Xml;
 
 namespace InnovatorSchema;
 
@@ -10,25 +9,70 @@ public sealed class ScalarSchema<T> : Schema
     private readonly ScalarReader<T> read;
     private readonly string? readRequirement;
     private readonly Rule[] rules;
+    private readonly DefaultValue? fallback;
 
     internal ScalarSchema(ScalarReader<T> read, string? readRequirement = null)
-        : this(read, readRequirement, Array.Empty<Rule>(), false)
+        : this(read, readRequirement, Array.Empty<Rule>(), Presence.Required, null)
     {
     }
 
     private ScalarSchema(ScalarReader<T> read, string? readRequirement, Rule[] rules,
-        bool allowsNullish)
-        : base(allowsNullish, 1)
+        Presence presence, DefaultValue? fallback) : base(presence, 1)
     {
         this.read = read;
         this.readRequirement = readRequirement;
         this.rules = rules;
+        this.fallback = fallback;
     }
 
-    /// <summary>Accept missing, null, empty and whitespace values.</summary>
+    internal bool RequiresValue => FieldPresence == Presence.Required && fallback is null;
+
+    /// <summary>Allow missing and null values. Preserve empty strings on text fields.</summary>
+    public override ScalarSchema<T> Optional()
+    {
+        return WithPresence(Presence.Optional);
+    }
+
+    /// <summary>Accept missing, null and blank values as null.</summary>
+    [Obsolete("Use Optional() for missing or null fields and to preserve empty strings.")]
     public override ScalarSchema<T> Nullish()
     {
-        return AllowsNullish ? this : new ScalarSchema<T>(read, readRequirement, rules, true);
+        return WithPresence(Presence.LegacyNullish);
+    }
+
+    /// <summary>Use a validated value when the field is omitted or explicitly null.</summary>
+    public ScalarSchema<T> Default(T value)
+    {
+        ArgumentNullException.ThrowIfNull(value);
+
+        if ((value is string text && (text.Length > Limits.Characters || !AcceptsText(text))) ||
+            (value is double number && !double.IsFinite(number)) ||
+            (value is Guid id && id == Guid.Empty))
+        {
+            throw new ArgumentException("The default is invalid for this field.", nameof(value));
+        }
+
+        foreach (Rule rule in rules)
+        {
+            CheckDefault(rule, value);
+        }
+
+        return new ScalarSchema<T>(read, readRequirement, rules, FieldPresence, new(value));
+    }
+
+    private ScalarSchema<T> WithPresence(Presence presence)
+    {
+        if (FieldPresence == presence)
+        {
+            return this;
+        }
+
+        if (fallback is { Value: string { Length: 0 } } && presence != Presence.Optional)
+        {
+            throw new InvalidOperationException("An empty string default requires Optional().");
+        }
+
+        return new ScalarSchema<T>(read, readRequirement, rules, presence, fallback);
     }
 
     internal ScalarSchema<T> Check(Func<T, bool> check, string requirement,
@@ -39,22 +83,52 @@ public sealed class ScalarSchema<T> : Schema
             throw new InvalidOperationException("The field has too many rules.");
         }
 
+        var rule = new Rule(check, requirement, customMessage);
+
+        if (fallback is DefaultValue current)
+        {
+            CheckDefault(rule, current.Value);
+        }
+
         var next = new Rule[rules.Length + 1];
         rules.CopyTo(next, 0);
-        next[^1] = new Rule(check, requirement, customMessage);
-        return new ScalarSchema<T>(read, readRequirement, next, AllowsNullish);
+        next[^1] = rule;
+        return new ScalarSchema<T>(read, readRequirement, next, FieldPresence, fallback);
+    }
+
+    private static void CheckDefault(Rule rule, T value)
+    {
+        if (!rule.Check(value))
+        {
+            throw new ArgumentException("The default value " + rule.Requirement, nameof(value));
+        }
     }
 
     internal override object? Read(FieldInput input, ValidationContext context, bool capture)
     {
-        if (!TryText(input, context, out string? text))
+        if (!input.TryReadText(context, out string? text))
         {
             return null;
         }
 
-        if (string.IsNullOrWhiteSpace(text))
+        if (text is null)
         {
-            FieldInput.CheckMissing(AllowsNullish, context);
+            if (fallback is DefaultValue current)
+            {
+                return capture ? current.Value : null;
+            }
+
+            FieldInput.CheckMissing(FieldPresence != Presence.Required, context);
+            return null;
+        }
+
+        if (!AcceptsText(text))
+        {
+            if (FieldPresence != Presence.LegacyNullish)
+            {
+                context.Add("A nonblank value is required.", readRequirement ?? "cannot be blank.");
+            }
+
             return null;
         }
 
@@ -82,58 +156,14 @@ public sealed class ScalarSchema<T> : Schema
         return capture ? value : null;
     }
 
-    private static bool TryText(FieldInput input, ValidationContext context, out string? text)
+    private bool AcceptsText(string text)
     {
-        text = input.Text;
-
-        if (!input.TryReadNull(context, out bool isNull))
-        {
-            return false;
-        }
-
-        if (!isNull && input.Element is XmlElement property)
-        {
-            int length = 0;
-
-            for (XmlNode? child = property.FirstChild; child is not null; child = child.NextSibling)
-            {
-                if (!context.Step())
-                {
-                    return false;
-                }
-
-                if (child is XmlElement)
-                {
-                    context.Add("Text is required.", "must contain a text value.");
-                    return false;
-                }
-
-                int size = child.Value?.Length ?? 0;
-
-                if (FieldInput.IsText(child) && size > Limits.Characters - length)
-                {
-                    context.Add("Field text limit exceeded.", "is too long. Shorten the value.");
-                    return false;
-                }
-
-                if (FieldInput.IsText(child))
-                {
-                    length += size;
-                }
-            }
-
-            text = property.InnerText;
-        }
-
-        if (text?.Length > Limits.Characters)
-        {
-            context.Add("Field text limit exceeded.", "is too long. Shorten the value.");
-            return false;
-        }
-
-        return true;
+        return !string.IsNullOrWhiteSpace(text) ||
+            (text.Length == 0 && FieldPresence == Presence.Optional && typeof(T) == typeof(string));
     }
 
     private readonly record struct Rule(Func<T, bool> Check, string Requirement,
         string? CustomMessage);
+
+    private readonly record struct DefaultValue(T Value);
 }

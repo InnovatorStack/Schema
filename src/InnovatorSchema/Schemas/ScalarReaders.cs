@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using System.Globalization;
 
 namespace InnovatorSchema;
@@ -14,31 +13,6 @@ internal static class ScalarReaders
     {
         value = text;
         return null;
-    }
-
-    public static ScalarSchema<string> Enum(string[] values)
-    {
-        ArgumentNullException.ThrowIfNull(values);
-
-        if (values.Length == 0 || values.Length > Limits.Fields)
-        {
-            throw new ArgumentException("Supply between 1 and 128 enum values.", nameof(values));
-        }
-
-        var choices = new HashSet<string>(StringComparer.Ordinal);
-
-        foreach (string value in values)
-        {
-            if (string.IsNullOrWhiteSpace(value) || value.Length > Limits.NameLength ||
-                !choices.Add(value))
-            {
-                throw new ArgumentException("Enum values must be distinct and nonblank.",
-                    nameof(values));
-            }
-        }
-
-        string message = "must be one of " + string.Join(", ", values) + ".";
-        return new ScalarSchema<string>(String).Check(choices.Contains, message);
     }
 
     public static string? Integer(string text, out long value)
@@ -67,5 +41,11 @@ internal static class ScalarReaders
         value = Guid.Empty;
         return text.Length == 32 && Guid.TryParseExact(text, "N", out value) &&
             value != Guid.Empty ? null : "Expected a nonzero, 32-character Aras GUID.";
+    }
+
+    public static string? ReadId(string text, out string value)
+    {
+        value = text;
+        return ReadGuid(text, out _);
     }
 }

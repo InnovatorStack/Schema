@@ -1,5 +1,5 @@
 var schema = V.Item("Part")
-    .Property("item_number", V.String().Max(64))
+    .Property("item_number", V.String().MaxLength(64))
     .Property("weight", V.Integer().Min(0));
 
 var item = V.ParseInput(schema, this);

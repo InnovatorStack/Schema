@@ -30,4 +30,4 @@ An invalid decimal shows “Weight must be a number. Use a period for decimals.�
 
 Pass your own text with `.Min(3, "Enter a weight of 3 or more.")`.
 `Issues` gives each failure's path and message. A failure on the second Item has a
-path such as `$[1].weight` and starts with `Row 2` in the user message.
+path such as `$[1].weight`. The user message reads “Weight must be at least 3.”

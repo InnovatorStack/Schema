@@ -3,9 +3,9 @@
 Assert the AML your Aras Innovator Method needs.
 
 ```csharp
-var schema = V.Item("Part").ID(V.Guid())
-    .Property("item_number", V.String().Max(64))
-    .Property("weight", V.Double().Min(0.0).Nullish());
+var schema = V.Item("Part").ID()
+    .Property("item_number", V.String().MaxLength(64))
+    .Property("weight", V.Double().Min(0.0).Optional());
 
 V.AssertInput(schema, this);
 ```

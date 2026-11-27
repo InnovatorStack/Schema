@@ -4,17 +4,17 @@ Assert the AML your Aras Innovator Method needs.
 
 ```csharp
 var schema = V.Item("Part")
-    .ID(V.Guid())
-    .Attribute("action", V.Enum("edit", "add", "update"))
-    .Property("item_number", V.String().Max(64).Nullish())
+    .ID()
+    .Attribute("action", V.String().Enum("edit", "add", "update"))
+    .Property("item_number", V.String().MaxLength(64).Optional())
     .Property("related_id", V.Item("Part").ID())
     .Property("weight", V.Integer().Min(0));
 
 V.AssertInput(schema, this);
 ```
 
-Declared fields require a nonblank value. Use `.Nullish()` to allow missing, null or blank
-values. Extra fields are allowed. `V.Array(schema)` checks a whole collection.
+Declared fields are required. `.Optional()` accepts missing or null values and preserves
+empty strings. `V.Array(schema)` checks a whole collection. Extra fields are allowed.
 
 Use `V.ParseInput(schema, this)` to read validated fields as `item.item_number` or
 `item["item_number"]`.

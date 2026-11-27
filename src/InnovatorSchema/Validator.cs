@@ -43,7 +43,7 @@ public static class Validator
     /// <summary>Require an exact match to one of the supplied strings.</summary>
     public static ScalarSchema<string> Enum(params string[] values)
     {
-        return ScalarReaders.Enum(values);
+        return String().Enum(values);
     }
 
     /// <summary>Require a signed 64-bit integer in AML text.</summary>

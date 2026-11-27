@@ -1,3 +1,4 @@
+using System;
 using Aras.IOM;
 using InnovatorSchema.Testing;
 using Xunit;
@@ -7,31 +8,36 @@ namespace InnovatorSchema.Tests;
 
 public sealed class ArasIntegrationTests
 {
+    private const string PartId = "783BA98DA5D04BF9AF4B1760826221F0";
+    private const string RelatedId = "938599DAAAE34871BFA51167C242DB12";
+
     [Theory]
+    [InlineData("<Item type='Part' id='" + PartId + "'/>")]
+    [InlineData("<Item type='Part'><id condition='eq'>" + PartId + "</id></Item>")]
     [InlineData("<Item type='Part' id='p'/>")]
-    [InlineData("<Item type='Part'><id condition='eq'>p</id></Item>")]
-    [InlineData("<Item type='Part' id='p'><id>different</id></Item>")]
-    [InlineData("<Item type='Part'><id condition='in'>p</id></Item>")]
-    [InlineData("<Item type='Part' id=' '><id>p</id></Item>")]
+    [InlineData("<Item type='Part' id='" + PartId + "'><id>different</id></Item>")]
+    [InlineData("<Item type='Part'><id condition='in'>" + PartId + "</id></Item>")]
+    [InlineData("<Item type='Part' id=' '><id>" + PartId + "</id></Item>")]
     public void IdValidationMatchesTheRealIomGetter(string aml)
     {
         var item = ItemFrom(aml);
         var schema = V.Item("Part").ID();
-        bool hasId = !string.IsNullOrWhiteSpace(item.getID());
+        bool valid = Guid.TryParseExact(item.getID(), "N", out Guid id) && id != Guid.Empty;
         var iomError = Record.Exception(() => V.AssertInput(schema, item));
         var amlError = Record.Exception(() => V.AssertInput(schema, aml));
 
-        Assert.Equal(hasId, iomError is null);
-        Assert.Equal(hasId, amlError is null);
+        Assert.Equal(valid, iomError is null);
+        Assert.Equal(valid, amlError is null);
     }
 
     [Fact]
     public void IomSelectionUsesTheSameRulesAsAmlWithoutMutatingInput()
     {
         var schema = V.Array(V.Item("Part").ID().Property("custom", V.Item("Part").ID()));
-        var item = ItemFrom("<AML><Item type='Part' id='one'><custom><Item type='Part' id='c'/>" +
-            "</custom></Item><Item type='Part' id='two'><custom><Item type='Part'/></custom>" +
-            "</Item></AML>");
+        var item = ItemFrom($"<AML><Item type='Part' id='{PartId}'><custom>" +
+            $"<Item type='Part' id='{RelatedId}'/></custom></Item>" +
+            $"<Item type='Part' id='{RelatedId}'><custom><Item type='Part'/></custom></Item>" +
+            "</AML>");
         Assert.True(item.isCollection());
         string before = item.dom.OuterXml;
 
@@ -45,15 +51,15 @@ public sealed class ArasIntegrationTests
     [Fact]
     public void SelectedRowsExcludeSiblingsOutsideTheSelection()
     {
-        var item = ItemFrom("<AML><Item type='Document'/><Item type='Part' id='a'/></AML>");
+        var item = ItemFrom($"<AML><Item type='Document'/><Item type='Part' id='{PartId}'/></AML>");
         var selection = item.getItemsByXPath("//Item[@type='Part']");
         V.AssertInput(V.Array(V.Item("Part").ID()), selection);
         V.AssertInput(V.Item("Part").ID(), selection);
         string id = V.ParseInput(V.Item("Part").ID(), selection).id;
-        Assert.Equal("a", id);
+        Assert.Equal(PartId, id);
         var parts = V.ParseInput(V.Array(V.Item("Part").ID()), selection);
         string firstId = Assert.Single(parts).id;
-        Assert.Equal("a", firstId);
+        Assert.Equal(PartId, firstId);
     }
 
     [Fact]
@@ -62,7 +68,7 @@ public sealed class ArasIntegrationTests
         var schema = V.Item("Part").Property("weight", V.Integer()).Property("related_id",
             V.Item("Part").ID());
         var input = ItemFrom("<Item type='Part'><weight>3</weight>" +
-            "<related_id><Item type='Part' id='child'/></related_id></Item>");
+            $"<related_id><Item type='Part' id='{RelatedId}'/></related_id></Item>");
         string before = input.dom.OuterXml;
 
         var parsed = V.ParseInput(schema, input);
@@ -72,21 +78,19 @@ public sealed class ArasIntegrationTests
         long weight = parsed.weight;
         string relatedId = parsed.related_id.id;
         Assert.Equal(3L, weight);
-        Assert.Equal("child", relatedId);
+        Assert.Equal(RelatedId, relatedId);
     }
 
     [Fact]
     public void IdRuleUsesTheNestedItemsOwnId()
     {
-        const string parent = "783BA98DA5D04BF9AF4B1760826221F0";
-        const string child = "938599DAAAE34871BFA51167C242DB12";
-        var schema = V.Item("Part").ID(V.Guid()).Property("related_id",
-            V.Item("Part").ID(V.Guid()).Attribute("action", V.Enum("edit")));
+        var schema = V.Item("Part").ID().Property("related_id",
+            V.Item("Part").ID().Attribute("action", V.String().Enum("edit")));
 
-        V.AssertInput(schema, ItemFrom(ParentWithChild(parent, child)));
+        V.AssertInput(schema, ItemFrom(ParentWithChild(PartId, RelatedId)));
 
         var error = Assert.Throws<ValidationException>(() =>
-            V.AssertInput(schema, ItemFrom(ParentWithChild(parent, "wrong"))));
+            V.AssertInput(schema, ItemFrom(ParentWithChild(PartId, "wrong"))));
         Assert.Equal("$.related_id.@id", Assert.Single(error.Issues).Path);
     }
 
