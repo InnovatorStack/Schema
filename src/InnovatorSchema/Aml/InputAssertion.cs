@@ -12,25 +12,50 @@ internal static class InputAssertion
         Read(item, array, input, results: null);
     }
 
-    public static ParsedItem Parse(ItemSchema item, object? input)
+    public static (ParsedItem Input, object? Innovator) Parse(ItemSchema item, object? input,
+        Func<string, string>? escapeSqlValue)
     {
         var results = new List<ParsedItem>(1);
-        Read(item, null, input, results);
-        return results.Count == 1 ? results[0] :
+        IomItem? iom = Read(item, null, input, results);
+        QuoteSqlValues(item, results, escapeSqlValue);
+        return results.Count == 1 ? (results[0], iom?.Innovator) :
             throw new InvalidOperationException("The validated input did not produce an Item.");
     }
 
-    public static IReadOnlyList<ParsedItem> Parse(ItemArraySchema array, object? input)
+    public static (IReadOnlyList<ParsedItem> Input, object? Innovator) Parse(
+        ItemArraySchema array, object? input, Func<string, string>? escapeSqlValue)
     {
         var results = new List<ParsedItem>();
-        Read(array.Item, array, input, results);
-        return results.AsReadOnly();
+        IomItem? iom = Read(array.Item, array, input, results);
+        QuoteSqlValues(array.Item, results, escapeSqlValue);
+        return (results.AsReadOnly(), iom?.Innovator);
     }
 
-    private static void Read(ItemSchema item, ItemArraySchema? array, object? input,
+    private static void QuoteSqlValues(ItemSchema item, List<ParsedItem> results,
+        Func<string, string>? escapeSqlValue)
+    {
+        if (!item.QuotesSql)
+        {
+            return;
+        }
+
+        if (escapeSqlValue is null)
+        {
+            throw new ArgumentNullException(nameof(escapeSqlValue),
+                "Supply a SQL escaping function when the schema uses SqlQuoted().");
+        }
+
+        foreach (ParsedItem result in results)
+        {
+            result.QuoteSqlValues(escapeSqlValue);
+        }
+    }
+
+    private static IomItem? Read(ItemSchema item, ItemArraySchema? array, object? input,
         List<ParsedItem>? results)
     {
         var context = new ValidationContext();
+        IomItem? iom = null;
 
         if (input is string aml)
         {
@@ -43,10 +68,13 @@ internal static class InputAssertion
         }
         else
         {
-            ReadIom(item, array, IomItem.Read(input), context, results);
+            var source = IomItem.Read(input);
+            ReadIom(item, array, source, context, results);
+            iom = source;
         }
 
         context.ThrowIfInvalid();
+        return iom;
     }
 
     private static void ReadAml(ItemSchema item, ItemArraySchema? array, string aml,

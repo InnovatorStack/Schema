@@ -17,7 +17,8 @@ using V = InnovatorSchema.Validator;
 
 Restart the Aras application after installation.
 
-If Check Syntax reports a missing `Microsoft.CSharp.RuntimeBinder.Binder` for a
+`ParseInput` examples use tuple syntax from C# 7. If Check Syntax reports a missing
+`Microsoft.CSharp.RuntimeBinder.Binder` for a
 `ParseInput` example, reference the server's .NET runtime assembly
 `Microsoft.CSharp.dll` in `ReferencedAssemblies`.
 

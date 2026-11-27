@@ -5,7 +5,7 @@ Assert the AML your Aras Innovator Method needs.
 ```csharp
 var schema = V.Item("Part")
     .ID()
-    .Attribute("action", V.String().Enum("edit", "add", "update"))
+    .Attribute("action", V.String().OneOf("edit", "add", "update"))
     .Property("item_number", V.String().MaxLength(64).Optional())
     .Property("related_id", V.Item("Part").ID())
     .Property("weight", V.Integer().Min(0));
@@ -16,8 +16,12 @@ V.AssertInput(schema, this);
 Declared fields are required. `.Optional()` accepts missing or null values and preserves
 empty strings. `V.Array(schema)` checks a whole collection. Extra fields are allowed.
 
-Use `V.ParseInput(schema, this)` to read validated fields as `item.item_number` or
-`item["item_number"]`.
+Use `ParseInput` to read validated values and get the Item's Innovator instance.
+
+```csharp
+var (item, inn) = V.ParseInput(schema, this);
+return inn.newResult(item.item_number);
+```
 
 [Installation](https://innovatorstack.github.io/Schema/guides/installation.html) ·
 [API](https://innovatorstack.github.io/Schema/api/) ·

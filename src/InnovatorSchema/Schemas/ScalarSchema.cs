@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Globalization;
 
 namespace InnovatorSchema;
 
@@ -17,7 +19,8 @@ public sealed class ScalarSchema<T> : Schema
     }
 
     private ScalarSchema(ScalarReader<T> read, string? readRequirement, Rule[] rules,
-        Presence presence, DefaultValue? fallback) : base(presence, 1)
+        Presence presence, DefaultValue? fallback, bool quotesSql = false)
+        : base(presence, 1, quotesSql)
     {
         this.read = read;
         this.readRequirement = readRequirement;
@@ -45,9 +48,7 @@ public sealed class ScalarSchema<T> : Schema
     {
         ArgumentNullException.ThrowIfNull(value);
 
-        if ((value is string text && (text.Length > Limits.Characters || !AcceptsText(text))) ||
-            (value is double number && !double.IsFinite(number)) ||
-            (value is Guid id && id == Guid.Empty))
+        if (!AcceptsLiteral(value))
         {
             throw new ArgumentException("The default is invalid for this field.", nameof(value));
         }
@@ -57,7 +58,70 @@ public sealed class ScalarSchema<T> : Schema
             CheckDefault(rule, value);
         }
 
-        return new ScalarSchema<T>(read, readRequirement, rules, FieldPresence, new(value));
+        return new ScalarSchema<T>(read, readRequirement, rules, FieldPresence, new(value),
+            QuotesSql);
+    }
+
+    /// <summary>Require the parsed value to match one of the supplied choices.</summary>
+    public ScalarSchema<T> OneOf(params T[] values)
+    {
+        ArgumentNullException.ThrowIfNull(values);
+
+        if (values.Length == 0 || values.Length > Limits.Fields)
+        {
+            throw new ArgumentException("Supply between 1 and 128 choices.", nameof(values));
+        }
+
+        var choices = new HashSet<T>();
+
+        foreach (T value in values)
+        {
+            if (!AcceptsLiteral(value) || value is string { Length: > Limits.NameLength } ||
+                !choices.Add(value))
+            {
+                throw new ArgumentException("Supply distinct, valid choices.", nameof(values));
+            }
+        }
+
+        string requirement = "must be one of " + string.Join(", ",
+            Array.ConvertAll(values, FormatChoice)) + ".";
+        return WithRule(new Rule(choices.Contains, requirement, Choices: choices));
+    }
+
+    internal ScalarSchema<T> CompareChoices(IEqualityComparer<T> comparer)
+    {
+        if (rules.Length == 0 || rules[^1].Choices is not HashSet<T> previous)
+        {
+            throw new InvalidOperationException("Use Insensitive() immediately after OneOf().");
+        }
+
+        var choices = new HashSet<T>(previous, comparer);
+
+        if (choices.Count != previous.Count)
+        {
+            throw new InvalidOperationException("OneOf() choices must be distinct ignoring case.");
+        }
+
+        return WithRule(rules[^1] with { Check = choices.Contains, Choices = choices },
+            replaceLast: true);
+    }
+
+    internal ScalarSchema<T> WithSqlQuoting()
+    {
+        return QuotesSql ? this :
+            new ScalarSchema<T>(read, readRequirement, rules, FieldPresence, fallback, true);
+    }
+
+    private static string FormatChoice(T value)
+    {
+        return value switch
+        {
+            bool flag => flag ? "1" : "0",
+            Guid id => id.ToString("N"),
+            DateTime date => date.ToString("yyyy-MM-dd'T'HH:mm:ss", CultureInfo.InvariantCulture),
+            string { Length: 0 } => "an empty string",
+            _ => Convert.ToString(value, CultureInfo.InvariantCulture) ?? string.Empty
+        };
     }
 
     private ScalarSchema<T> WithPresence(Presence presence)
@@ -72,28 +136,33 @@ public sealed class ScalarSchema<T> : Schema
             throw new InvalidOperationException("An empty string default requires Optional().");
         }
 
-        return new ScalarSchema<T>(read, readRequirement, rules, presence, fallback);
+        return new ScalarSchema<T>(read, readRequirement, rules, presence, fallback, QuotesSql);
     }
 
     internal ScalarSchema<T> Check(Func<T, bool> check, string requirement,
         string? customMessage = null)
     {
-        if (rules.Length >= Limits.Rules)
+        return WithRule(new Rule(check, requirement, customMessage));
+    }
+
+    private ScalarSchema<T> WithRule(Rule rule, bool replaceLast = false)
+    {
+        int count = rules.Length + (replaceLast ? 0 : 1);
+
+        if (count > Limits.Rules)
         {
             throw new InvalidOperationException("The field has too many rules.");
         }
-
-        var rule = new Rule(check, requirement, customMessage);
 
         if (fallback is DefaultValue current)
         {
             CheckDefault(rule, current.Value);
         }
 
-        var next = new Rule[rules.Length + 1];
+        var next = new Rule[count];
         rules.CopyTo(next, 0);
         next[^1] = rule;
-        return new ScalarSchema<T>(read, readRequirement, next, FieldPresence, fallback);
+        return new ScalarSchema<T>(read, readRequirement, next, FieldPresence, fallback, QuotesSql);
     }
 
     private static void CheckDefault(Rule rule, T value)
@@ -162,8 +231,20 @@ public sealed class ScalarSchema<T> : Schema
             (text.Length == 0 && FieldPresence == Presence.Optional && typeof(T) == typeof(string));
     }
 
+    private bool AcceptsLiteral(T value)
+    {
+        return value switch
+        {
+            null => false,
+            string text => text.Length <= Limits.Characters && AcceptsText(text),
+            double number => double.IsFinite(number),
+            Guid id => id != Guid.Empty,
+            _ => true
+        };
+    }
+
     private readonly record struct Rule(Func<T, bool> Check, string Requirement,
-        string? CustomMessage);
+        string? CustomMessage = null, HashSet<T>? Choices = null);
 
     private readonly record struct DefaultValue(T Value);
 }

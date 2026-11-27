@@ -15,6 +15,12 @@ internal static class ScalarReaders
         return null;
     }
 
+    public static string? Bool(string text, out bool value)
+    {
+        value = text == "1";
+        return value || text == "0" ? null : "Expected 0 or 1.";
+    }
+
     public static string? Integer(string text, out long value)
     {
         return long.TryParse(text, NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture,

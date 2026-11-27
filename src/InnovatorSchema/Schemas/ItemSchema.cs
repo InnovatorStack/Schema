@@ -21,7 +21,7 @@ public sealed class ItemSchema : Schema
     }
 
     private ItemSchema(string? type, Schema? idSchema, Binding[] fields,
-        Presence presence, int depth) : base(presence, depth)
+        Presence presence, int depth, bool quotesSql = false) : base(presence, depth, quotesSql)
     {
         this.type = type;
         this.idSchema = idSchema;
@@ -48,8 +48,13 @@ public sealed class ItemSchema : Schema
             throw new ArgumentException("An ID rule requires a nonblank value.", nameof(schema));
         }
 
+        if (schema.QuotesSql)
+        {
+            throw new ArgumentException("An ID rule must preserve the ID value.", nameof(schema));
+        }
+
         return ReferenceEquals(idSchema, schema) ? this :
-            new ItemSchema(type, schema, fields, FieldPresence, Depth);
+            new ItemSchema(type, schema, fields, FieldPresence, Depth, QuotesSql);
     }
 
     /// <summary>Check the named AML attribute.</summary>
@@ -85,7 +90,7 @@ public sealed class ItemSchema : Schema
     private ItemSchema WithPresence(Presence presence)
     {
         return FieldPresence == presence ? this :
-            new ItemSchema(type, idSchema, fields, presence, Depth);
+            new ItemSchema(type, idSchema, fields, presence, Depth, QuotesSql);
     }
 
     private ItemSchema Add(string name, Schema schema, bool attribute)
@@ -117,7 +122,7 @@ public sealed class ItemSchema : Schema
         fields.CopyTo(next, 0);
         next[^1] = new Binding(name, schema, attribute);
         return new ItemSchema(type, idSchema, next, FieldPresence,
-            Math.Max(Depth, schema.Depth + 1));
+            Math.Max(Depth, schema.Depth + 1), QuotesSql || schema.QuotesSql);
     }
 
     internal int FindField(string name, bool attribute)
@@ -131,6 +136,28 @@ public sealed class ItemSchema : Schema
         }
 
         return -1;
+    }
+
+    internal void QuoteSqlValues(object?[] values, Func<string, string> escapeSqlValue)
+    {
+        for (int index = 0; index < fields.Length; index++)
+        {
+            if (!fields[index].Schema.QuotesSql)
+            {
+                continue;
+            }
+
+            if (values[index] is ParsedItem child)
+            {
+                child.QuoteSqlValues(escapeSqlValue);
+            }
+            else if (values[index] is string text)
+            {
+                string escaped = escapeSqlValue(text) ??
+                    throw new InvalidOperationException("The SQL escaping function returned null.");
+                values[index] = "N'" + escaped + "'";
+            }
+        }
     }
 
     internal override object? Read(FieldInput input, ValidationContext context, bool capture)

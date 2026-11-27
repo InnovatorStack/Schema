@@ -182,7 +182,7 @@ public sealed class AssertionTests
     public void EachArrayRowAndNestedPropertyHasAnIssuePath()
     {
         var schema = V.Array(V.Item("Part").ID()
-            .Attribute("action", V.Enum("add", "edit", "update"))
+            .Attribute("action", V.String().OneOf("add", "edit", "update"))
             .Property("component", V.Item("Part").ID())
             .Property("weight", V.Integer().Min(0, "Use a nonnegative weight.")));
         const string aml = "<AML><Item type='Part' action='get'><component><Item type='Part'/>" +

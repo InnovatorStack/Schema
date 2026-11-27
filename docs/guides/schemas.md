@@ -7,7 +7,7 @@ generate an ID, leave the rule off.
 
 ```csharp
 var schema = V.Item()
-    .Attribute("action", V.String().Enum("add", "edit"))
+    .Attribute("action", V.String().OneOf("add", "edit"))
     .Property("quantity", V.Integer().Min(1))
     .Property("weight", V.Double().Min(0.0))
     .Property("effective_date", V.Date().Optional());

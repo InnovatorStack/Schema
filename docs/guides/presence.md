@@ -11,15 +11,15 @@ field or an explicit null. Optional strings also accept an empty string.
 | `<name> </name>` | Error | Error |
 | `<name>Bracket</name>` | `"Bracket"` | `"Bracket"` |
 
-Length and enum rules also check `""`. For example, `.Optional().MinLength(1)`
+Length and choice rules also check `""`. For example, `.Optional().MinLength(1)`
 accepts omission and rejects `<name/>`. An optional integer, double or date
 accepts null and still requires a valid value when supplied.
 
 Use `.Default(value)` to supply a value when the field is omitted or explicitly null.
 
 ```csharp
-var schema = V.Item().Property("type", V.String().Enum("user", "identity").Default("user"));
-var item = V.ParseInput(schema, "<Item/>");
+var schema = V.Item().Property("type", V.String().OneOf("user", "identity").Default("user"));
+var (item, _) = V.ParseInput(schema, "<Item/>");
 string type = item.type; // "user"
 ```
 

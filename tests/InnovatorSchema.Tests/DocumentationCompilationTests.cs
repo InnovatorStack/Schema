@@ -8,7 +8,7 @@ namespace InnovatorSchema.Tests;
 public sealed class DocumentationCompilationTests
 {
     [Fact]
-    public void ApiExamplesCompileWithCSharp6()
+    public void ApiExamplesCompileWithCSharp7()
     {
         string path = Path.Combine(RepositoryFiles.Root, "docs", "api", "index.md");
         string markdown = File.ReadAllText(path).ReplaceLineEndings("\n");

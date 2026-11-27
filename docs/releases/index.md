@@ -2,8 +2,12 @@
 
 [Downloads](https://github.com/InnovatorStack/Schema/releases)
 
-[Schema 0.4.0](https://github.com/InnovatorStack/Schema/releases/tag/v0.4.0) adds
-`ParseInput` for single Items and batches.
+## Upgrading to 0.6.0
+
+- Replace `V.Enum(...)` and `V.String().Enum(...)` with `V.String().OneOf(...)`.
+- Unpack `ParseInput` with `var (item, inn) = V.ParseInput(schema, this)`.
+  Use `var (item, _)` when you only need the parsed values.
+- Use `V.Bool()` for AML booleans and `SqlQuoted()` for SQL string literals.
 
 ## Upgrading to 0.5.0
 

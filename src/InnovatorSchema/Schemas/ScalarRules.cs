@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 
 namespace InnovatorSchema;
 
@@ -76,32 +75,18 @@ public static class ScalarRules
             requirement, message);
     }
 
-    /// <summary>Require an exact match to one of the supplied strings.</summary>
-    public static ScalarSchema<string> Enum(this ScalarSchema<string> schema,
-        params string[] values)
+    /// <summary>Compare the preceding OneOf choices without regard to case.</summary>
+    public static ScalarSchema<string> Insensitive(this ScalarSchema<string> schema)
     {
         ArgumentNullException.ThrowIfNull(schema);
-        ArgumentNullException.ThrowIfNull(values);
+        return schema.CompareChoices(StringComparer.OrdinalIgnoreCase);
+    }
 
-        if (values.Length == 0 || values.Length > Limits.Fields)
-        {
-            throw new ArgumentException("Supply between 1 and 128 enum values.", nameof(values));
-        }
-
-        var choices = new HashSet<string>(StringComparer.Ordinal);
-
-        foreach (string value in values)
-        {
-            if (string.IsNullOrWhiteSpace(value) || value.Length > Limits.NameLength ||
-                !choices.Add(value))
-            {
-                throw new ArgumentException("Enum values must be distinct and nonblank.",
-                    nameof(values));
-            }
-        }
-
-        string message = "must be one of " + string.Join(", ", values) + ".";
-        return schema.Check(choices.Contains, message);
+    /// <summary>Return a SQL literal using the escape function supplied to ParseInput.</summary>
+    public static ScalarSchema<string> SqlQuoted(this ScalarSchema<string> schema)
+    {
+        ArgumentNullException.ThrowIfNull(schema);
+        return schema.WithSqlQuoting();
     }
 
     private static void CheckBound<T>(T value)

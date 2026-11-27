@@ -18,6 +18,11 @@ public sealed class ParsedItem : DynamicObject
         this.values = values;
     }
 
+    internal void QuoteSqlValues(Func<string, string> escapeSqlValue)
+    {
+        schema.QuoteSqlValues(values, escapeSqlValue);
+    }
+
     /// <summary>Read a declared value by name. Prefix attribute names with @.</summary>
     public dynamic? this[string name]
     {

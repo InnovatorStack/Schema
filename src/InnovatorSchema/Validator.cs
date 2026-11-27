@@ -40,10 +40,10 @@ public static class Validator
         return new ScalarSchema<string>(ScalarReaders.String);
     }
 
-    /// <summary>Require an exact match to one of the supplied strings.</summary>
-    public static ScalarSchema<string> Enum(params string[] values)
+    /// <summary>Read Aras boolean text. Zero is false and one is true.</summary>
+    public static ScalarSchema<bool> Bool()
     {
-        return String().Enum(values);
+        return new ScalarSchema<bool>(ScalarReaders.Bool, "must be 0 or 1.");
     }
 
     /// <summary>Require a signed 64-bit integer in AML text.</summary>
@@ -72,20 +72,28 @@ public static class Validator
         return new ScalarSchema<Guid>(ScalarReaders.ReadGuid, "must be a valid Aras ID.");
     }
 
-    /// <summary>Read validated values from one Item supplied as AML text or IOM.</summary>
+    /// <summary>Read one Item and its Innovator instance, if supplied as IOM.</summary>
+    /// <param name="schema">The schema for the Item.</param>
+    /// <param name="input">An IOM Item or AML text.</param>
+    /// <param name="escapeSqlValue">Aras QuoteValue for fields declared with SqlQuoted.</param>
     /// <exception cref="ValidationException">The input fails validation.</exception>
-    public static dynamic ParseInput(ItemSchema schema, object? input)
+    public static (dynamic Input, dynamic? Innovator) ParseInput(ItemSchema schema, object? input,
+        Func<string, string>? escapeSqlValue = null)
     {
         ArgumentNullException.ThrowIfNull(schema);
-        return InputAssertion.Parse(schema, input);
+        return InputAssertion.Parse(schema, input, escapeSqlValue);
     }
 
-    /// <summary>Read the validated values of every Item in the supplied collection.</summary>
+    /// <summary>Read a collection and its Innovator instance, if supplied as IOM.</summary>
+    /// <param name="schema">The schema for the Items.</param>
+    /// <param name="input">An IOM Item or AML text.</param>
+    /// <param name="escapeSqlValue">Aras QuoteValue for fields declared with SqlQuoted.</param>
     /// <exception cref="ValidationException">The input fails validation.</exception>
-    public static IReadOnlyList<dynamic> ParseInput(ItemArraySchema schema, object? input)
+    public static (IReadOnlyList<dynamic> Input, dynamic? Innovator) ParseInput(
+        ItemArraySchema schema, object? input, Func<string, string>? escapeSqlValue = null)
     {
         ArgumentNullException.ThrowIfNull(schema);
-        return InputAssertion.Parse(schema, input);
+        return InputAssertion.Parse(schema, input, escapeSqlValue);
     }
 
     /// <summary>Assert exactly one Item supplied as AML text or an IOM Item.</summary>

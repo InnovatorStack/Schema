@@ -13,7 +13,7 @@ public sealed class ParsingTests
     {
         const string id = "783BA98DA5D04BF9AF4B1760826221F0";
         var schema = V.Item("Part").ID(V.Guid())
-            .Attribute("action", V.Enum("edit"))
+            .Attribute("action", V.String().OneOf("edit"))
             .Property("action", V.String())
             .Property("weight", V.Integer().Min(0))
             .Property("cost", V.Double())
@@ -24,7 +24,7 @@ public sealed class ParsingTests
             "<related_id><Item type='Part' id='938599DAAAE34871BFA51167C242DB12'/>" +
             "</related_id><extra>x</extra></Item></AML>";
 
-        var part = V.ParseInput(schema, aml);
+        var (part, _) = V.ParseInput(schema, aml);
         object partId = part.id;
         object attribute = part["@action"];
         object property = part.action;
@@ -54,7 +54,7 @@ public sealed class ParsingTests
         var schema = V.Item().Property("weight", V.Integer().Optional())
             .Property("reference", V.String().Optional())
             .Property("related_id", V.Item("Part").Optional());
-        var part = V.ParseInput(schema, "<Item>" + property + "</Item>");
+        var (part, _) = V.ParseInput(schema, "<Item>" + property + "</Item>");
         long? weight = part.weight;
         string? reference = part["reference"];
         object? related = part.related_id;
@@ -94,14 +94,14 @@ public sealed class ParsingTests
         var schema = V.Array(V.Item().Property("weight", V.Integer())).Min(1).Max(2);
         const string aml = "<AML><Item><weight>3</weight></Item>" +
             "<Item><weight>5</weight></Item></AML>";
-        var parts = V.ParseInput(schema, aml);
+        var (parts, _) = V.ParseInput(schema, aml);
         long first = parts[0].weight;
         long second = parts[1]["weight"];
 
         Assert.Equal(2, parts.Count);
         Assert.Equal(3L, first);
         Assert.Equal(5L, second);
-        Assert.Empty(V.ParseInput(V.Array(V.Item()), "<AML/>"));
+        Assert.Empty(V.ParseInput(V.Array(V.Item()), "<AML/>").Input);
     }
 
     [Fact]
@@ -124,7 +124,7 @@ public sealed class ParsingTests
             .Property("id", V.String()).Property("part-number", V.String());
         string aml = $"<Item id='{id}'><id>reference</id><part-number>P-100</part-number></Item>";
 
-        var part = V.ParseInput(schema, aml);
+        var (part, _) = V.ParseInput(schema, aml);
         string attribute = part["@id"];
         string property = part.id;
         string number = part["part-number"];
@@ -171,7 +171,7 @@ public sealed class ParsingTests
     {
         string text = expected.ToString(System.Globalization.CultureInfo.InvariantCulture);
         var schema = V.Item().Property("quantity", V.Integer());
-        var part = V.ParseInput(schema, "<Item><quantity>" + text + "</quantity></Item>");
+        var (part, _) = V.ParseInput(schema, "<Item><quantity>" + text + "</quantity></Item>");
         object quantity = part["quantity"];
 
         Assert.Equal(expected, Assert.IsType<long>(quantity));

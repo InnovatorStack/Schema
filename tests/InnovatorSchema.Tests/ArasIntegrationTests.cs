@@ -55,11 +55,12 @@ public sealed class ArasIntegrationTests
         var selection = item.getItemsByXPath("//Item[@type='Part']");
         V.AssertInput(V.Array(V.Item("Part").ID()), selection);
         V.AssertInput(V.Item("Part").ID(), selection);
-        string id = V.ParseInput(V.Item("Part").ID(), selection).id;
+        string id = V.ParseInput(V.Item("Part").ID(), selection).Input.id;
         Assert.Equal(PartId, id);
-        var parts = V.ParseInput(V.Array(V.Item("Part").ID()), selection);
+        var (parts, inn) = V.ParseInput(V.Array(V.Item("Part").ID()), selection);
         string firstId = Assert.Single(parts).id;
         Assert.Equal(PartId, firstId);
+        Assert.IsType<Innovator>((object?)inn);
     }
 
     [Fact]
@@ -71,7 +72,7 @@ public sealed class ArasIntegrationTests
             $"<related_id><Item type='Part' id='{RelatedId}'/></related_id></Item>");
         string before = input.dom.OuterXml;
 
-        var parsed = V.ParseInput(schema, input);
+        var (parsed, _) = V.ParseInput(schema, input);
 
         Assert.Equal(before, input.dom.OuterXml);
         input.setProperty("weight", "8");
@@ -85,7 +86,7 @@ public sealed class ArasIntegrationTests
     public void IdRuleUsesTheNestedItemsOwnId()
     {
         var schema = V.Item("Part").ID().Property("related_id",
-            V.Item("Part").ID().Attribute("action", V.String().Enum("edit")));
+            V.Item("Part").ID().Attribute("action", V.String().OneOf("edit")));
 
         V.AssertInput(schema, ItemFrom(ParentWithChild(PartId, RelatedId)));
 
@@ -125,7 +126,7 @@ public sealed class ArasIntegrationTests
             "</SOAP-ENV:Envelope>");
         Assert.Equal(0, item.getItemCount());
         V.AssertInput(V.Array(V.Item("Part")), item);
-        Assert.Empty(V.ParseInput(V.Array(V.Item("Part")), item));
+        Assert.Empty(V.ParseInput(V.Array(V.Item("Part")), item).Input);
         Assert.Throws<ValidationException>(() => V.AssertInput(V.Item("Part"), item));
     }
 

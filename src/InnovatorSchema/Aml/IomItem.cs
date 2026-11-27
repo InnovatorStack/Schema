@@ -22,6 +22,7 @@ internal readonly struct IomItem
     public XmlElement? Element => readers.Element(item);
     public string? Id => readers.Id(item);
     public int Count => readers.Count(item);
+    public object Innovator => readers.Innovator(item);
 
     public IomItem At(int index)
     {
@@ -78,7 +79,9 @@ internal readonly struct IomItem
                 item, index).Compile(),
             Expression.Lambda<Func<object, string, object?>>(
                 Expression.Convert(Call(target, "getPropertyItem", name), typeof(object)),
-                item, name).Compile());
+                item, name).Compile(),
+            Expression.Lambda<Func<object, object>>(
+                Expression.Convert(Call(target, "getInnovator"), typeof(object)), item).Compile());
     }
 
     private static MethodCallExpression Call(
@@ -92,5 +95,6 @@ internal readonly struct IomItem
         Func<object, string?> Id,
         Func<object, int> Count,
         Func<object, int, object> At,
-        Func<object, string, object?> Property);
+        Func<object, string, object?> Property,
+        Func<object, object> Innovator);
 }

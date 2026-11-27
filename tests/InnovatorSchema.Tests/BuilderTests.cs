@@ -20,7 +20,7 @@ public sealed class BuilderTests
         foreach (object input in Inputs(property))
         {
             V.AssertInput(schema, input);
-            var item = V.ParseInput(schema, input);
+            var (item, _) = V.ParseInput(schema, input);
             Assert.Equal(expected, (object?)item.height);
             Assert.Equal(expected, (object?)item["height"]);
         }
@@ -30,14 +30,15 @@ public sealed class BuilderTests
     [InlineData("", "user")]
     [InlineData("<type is_null='1'/>", "user")]
     [InlineData("<type>identity</type>", "identity")]
-    public void EnumDefaultAppliesToAbsentAndNullValues(string property, string expected)
+    public void ChoiceDefaultAppliesToAbsentAndNullValues(string property, string expected)
     {
-        var schema = V.Item().Property("type", V.String().Enum("user", "identity").Default("user"));
+        var schema = V.Item().Property("type",
+            V.String().OneOf("user", "identity").Default("user"));
 
         foreach (object input in Inputs(property))
         {
             V.AssertInput(schema, input);
-            object value = V.ParseInput(schema, input).type;
+            object value = V.ParseInput(schema, input).Input.type;
             Assert.Equal(expected, Assert.IsType<string>(value));
         }
     }
@@ -49,7 +50,8 @@ public sealed class BuilderTests
     [InlineData("<type is_null='1'>user</type>")]
     public void DefaultDoesNotReplaceSuppliedInvalidValues(string property)
     {
-        var schema = V.Item().Property("type", V.String().Enum("user", "identity").Default("user"));
+        var schema = V.Item().Property("type",
+            V.String().OneOf("user", "identity").Default("user"));
         RejectInBothEntryPoints(schema, property, "$.type");
     }
 
@@ -75,7 +77,7 @@ public sealed class BuilderTests
         foreach (object input in Inputs(property))
         {
             V.AssertInput(schema, input);
-            Assert.Equal(expected, (object?)V.ParseInput(schema, input).weight);
+            Assert.Equal(expected, (object?)V.ParseInput(schema, input).Input.weight);
         }
     }
 
@@ -93,9 +95,9 @@ public sealed class BuilderTests
     public void InvalidDefaultsFailWhileDefiningTheScalar()
     {
         Assert.Throws<ArgumentException>(() =>
-            V.String().Enum("user", "identity").Default("admin"));
+            V.String().OneOf("user", "identity").Default("admin"));
         Assert.Throws<ArgumentException>(() =>
-            V.String().Default("admin").Enum("user", "identity"));
+            V.String().Default("admin").OneOf("user", "identity"));
         Assert.Throws<ArgumentException>(() => V.String().Length(1, 3).Default("abcd"));
         Assert.Throws<ArgumentException>(() => V.String().Default(" "));
         Assert.Throws<ArgumentException>(() => V.Double().Min(0.0).Default(-1.0));
@@ -111,7 +113,7 @@ public sealed class BuilderTests
 
         var input = ArasIntegrationTests.ItemFrom("<Item><quantity is_null='1'/></Item>");
         string before = input.dom.OuterXml;
-        var item = V.ParseInput(schema, input);
+        var (item, _) = V.ParseInput(schema, input);
         object quantity = item.quantity;
         object height = item.height;
 
@@ -130,7 +132,7 @@ public sealed class BuilderTests
 
         foreach (object input in Inputs(property))
         {
-            Assert.Equal(expected, (object?)V.ParseInput(schema, input).name);
+            Assert.Equal(expected, (object?)V.ParseInput(schema, input).Input.name);
         }
     }
 
@@ -153,7 +155,7 @@ public sealed class BuilderTests
 #pragma warning disable CS0618
         var schema = V.Item().Property("name", V.String().Nullish());
 #pragma warning restore CS0618
-        Assert.Null((object?)V.ParseInput(schema, "<Item><name/></Item>").name);
+        Assert.Null((object?)V.ParseInput(schema, "<Item><name/></Item>").Input.name);
     }
 
     private static object[] Inputs(string property)

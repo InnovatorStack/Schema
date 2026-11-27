@@ -41,7 +41,9 @@ public sealed class ConsumerCompilationTests
             "public Example(IServerConnection connection) : base(connection) {} " +
             "public Item Run() { " + body + " } }";
         using var output = new MemoryStream();
-        var result = Compile(source).Emit(output);
+        var languageVersion = expectedResult is null
+            ? LanguageVersion.CSharp6 : LanguageVersion.CSharp7;
+        var result = Compile(source, languageVersion).Emit(output);
         Assert.True(result.Success, string.Join("\n", result.Diagnostics));
 
         Type type = Assembly.Load(output.ToArray()).GetType("Example", throwOnError: true)!;
@@ -59,9 +61,10 @@ public sealed class ConsumerCompilationTests
         }
     }
 
-    internal static CSharpCompilation Compile(string source)
+    internal static CSharpCompilation Compile(string source,
+        LanguageVersion languageVersion = LanguageVersion.CSharp7)
     {
-        var options = new CSharpParseOptions(LanguageVersion.CSharp6);
+        var options = new CSharpParseOptions(languageVersion);
         return CSharpCompilation.Create("ConsumerExamples",
             new[] { CSharpSyntaxTree.ParseText(source, options) }, References(),
             new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));

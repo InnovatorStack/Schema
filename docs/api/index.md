@@ -7,7 +7,7 @@ Use `using InnovatorSchema;` and `using V = InnovatorSchema.Validator;`.
 ```csharp
 var part = V.Item("Part")
     .ID()
-    .Attribute("action", V.String().Enum("edit", "add", "update"))
+    .Attribute("action", V.String().OneOf("edit", "add", "update"))
     .Property("item_number", V.String().MaxLength(64))
     .Property("related_id", V.Item().ID().Optional());
 ```
@@ -22,7 +22,7 @@ own ID. `Attribute` and `Property` add a field to a new schema. Extra fields are
 | Call | Accepts |
 | --- | --- |
 | `V.String()` | Nonblank text |
-| `V.String().Enum("add", "edit")` | One of the strings, with exact casing |
+| `V.Bool()` | `0` for `false` or `1` for `true` |
 | `V.Integer()` | Signed 64-bit integer text |
 | `V.Double()` | Finite floating-point text with a period as the decimal separator |
 | `V.Date()` | `yyyy-MM-dd` or `yyyy-MM-ddTHH:mm:ss` |
@@ -36,11 +36,17 @@ argument to customize a scalar bound's error.
 `Optional()` permits missing and null values. Optional strings preserve `""`.
 `Default(value)` supplies a validated fallback for a missing or null value.
 
+`OneOf(...)` compares the parsed scalar with the supplied choices. String choices
+match exactly by default. Add `.Insensitive()` after `OneOf(...)` to compare strings
+without regard to case. Parsing preserves the original casing.
+
 ```csharp
 var count = V.Integer().Min(0, "Enter a nonnegative count.").Max(100);
 var date = V.Date().Optional();
 var name = V.String().Length(2, 64);
-var type = V.String().Enum("user", "identity").Default("user");
+var type = V.String().OneOf("user", "identity").Insensitive().Default("user");
+var priority = V.Integer().OneOf(1, 3, 5);
+var isTest = V.Bool().Default(false);
 ```
 
 ## Collections
@@ -76,15 +82,15 @@ var schema = V.Item("Part")
 
 var aml = "<Item type='Part' id='783BA98DA5D04BF9AF4B1760826221F0'>" +
     "<item_number>P-100</item_number><weight>4</weight></Item>";
-var item = V.ParseInput(schema, aml);
+var (item, _) = V.ParseInput(schema, aml);
 var itemNo = item["item_number"]; // string
 var weight = item["weight"]; // long
 var cost = item.cost; // null
 ```
 
-`ParseInput` accepts AML text or an IOM Item. It returns the validated fields
-declared by the schema. Invalid input throws the same `ValidationException` as
-`AssertInput`.
+`ParseInput` returns `(Input, Innovator)`. `Input` contains the validated fields.
+For an IOM Item, `Innovator` comes from `getInnovator()`. For AML text, it is `null`.
+Invalid input throws the same `ValidationException` as `AssertInput`.
 
 Use `item.item_number` or `item["item_number"]` for a property, and `item["@action"]`
 for a declared attribute. Use brackets for names such as `part-number`. Nested Items
@@ -93,8 +99,8 @@ use the same access, as in `item.related_id.item_number`. An ID rule supplies
 when the corresponding property or attribute has no explicit rule. Plain `.ID()`
 yields text and `.ID(V.Guid())` yields a `Guid`.
 
-The result resolves field names at runtime. String and Enum yield `string`, Integer
-yields `long`, Double yields `double`, Date yields `DateTime`, and Guid yields
+The result resolves field names at runtime. String yields `string`, Bool yields `bool`,
+Integer yields `long`, Double yields `double`, Date yields `DateTime`, and Guid yields
 `Guid`. An omitted or explicitly null optional field yields `null`.
 An empty optional string yields `""`.
 The result is a read-only snapshot of those values.
@@ -103,12 +109,15 @@ Pass an array schema to get an indexed list of parsed Items.
 
 ```csharp
 var schema = V.Array(V.Item("Part").Property("weight", V.Integer())).Min(1).Max(20);
-var parts = V.ParseInput(schema, "<AML><Item type='Part'><weight>4</weight></Item></AML>");
+var (parts, _) = V.ParseInput(schema, "<AML><Item type='Part'><weight>4</weight></Item></AML>");
 long weight = parts[0].weight;
 ```
 
 See the [BOM example](/examples/part-batch#parse-bom-rows) for a Method that reads a batch
 with nested Parts.
+
+Use [`SqlQuoted()`](/guides/server-methods#sql-string-values) on a string field to get a
+SQL string literal after validation.
 
 ## DLL version
 
