@@ -103,7 +103,7 @@ public sealed class AssertionTests
         var guid = V.Guid().Optional();
         V.AssertInput(V.Item().Property("related_id", guid), "<Item/>");
         Assert.Throws<ArgumentException>(() => V.Item().ID(guid));
-        var defaultId = V.Guid().Default(Guid.ParseExact("783BA98DA5D04BF9AF4B1760826221F0", "N"));
+        var defaultId = V.Guid().Default("783BA98DA5D04BF9AF4B1760826221F0");
         Assert.Throws<ArgumentException>(() => V.Item().ID(defaultId));
     }
 
@@ -169,7 +169,7 @@ public sealed class AssertionTests
     public void UserMessagesShowTheFieldAndDetailsKeepTheFullLocation()
     {
         var part = V.Item().Property("weight", V.Integer().Min(3).Optional());
-        var schema = V.Array(V.Item().Property("related_id", part));
+        var schema = V.Items(V.Item().Property("related_id", part));
         const string aml = "<AML><Item><related_id><Item/></related_id></Item>" +
             "<Item><related_id><Item><weight>2</weight></Item></related_id></Item></AML>";
         var error = Assert.Throws<ValidationException>(() => V.AssertInput(schema, aml));
@@ -181,7 +181,7 @@ public sealed class AssertionTests
     [Fact]
     public void EachArrayRowAndNestedPropertyHasAnIssuePath()
     {
-        var schema = V.Array(V.Item("Part").ID()
+        var schema = V.Items(V.Item("Part").ID()
             .Attribute("action", V.String().OneOf("add", "edit", "update"))
             .Property("component", V.Item("Part").ID())
             .Property("weight", V.Integer().Min(0, "Use a nonnegative weight.")));
@@ -262,7 +262,7 @@ public sealed class AssertionTests
     public void CollectionCardinalityIsCheckedBeforeRows()
     {
         var item = V.Item("Part");
-        var array = V.Array(item);
+        var array = V.Items(item);
         V.AssertInput(array, "<AML/>");
         V.AssertInput(array, "<Item type='Part'/>");
         V.AssertInput(item, "<AML><Item type='Part'/></AML>");

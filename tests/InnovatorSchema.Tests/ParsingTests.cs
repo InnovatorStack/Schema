@@ -34,7 +34,7 @@ public sealed class ParsingTests
         object effectiveDate = part.effective_date;
         string childId = part.related_id.id;
 
-        Assert.Equal(Guid.ParseExact(id, "N"), Assert.IsType<Guid>(partId));
+        Assert.Equal(id, Assert.IsType<string>(partId));
         Assert.Equal("edit", Assert.IsType<string>(attribute));
         Assert.Equal("Review", Assert.IsType<string>(property));
         Assert.Equal(4L, Assert.IsType<long>(indexedWeight));
@@ -91,7 +91,7 @@ public sealed class ParsingTests
     [Fact]
     public void BatchRowsSupportTheSameAccessAndKeepTheirOrder()
     {
-        var schema = V.Array(V.Item().Property("weight", V.Integer())).Min(1).Max(2);
+        var schema = V.Items(V.Item().Property("weight", V.Integer())).Min(1).Max(2);
         const string aml = "<AML><Item><weight>3</weight></Item>" +
             "<Item><weight>5</weight></Item></AML>";
         var (parts, _) = V.ParseInput(schema, aml);
@@ -101,13 +101,13 @@ public sealed class ParsingTests
         Assert.Equal(2, parts.Count);
         Assert.Equal(3L, first);
         Assert.Equal(5L, second);
-        Assert.Empty(V.ParseInput(V.Array(V.Item()), "<AML/>").Input);
+        Assert.Empty(V.ParseInput(V.Items(V.Item()), "<AML/>").Input);
     }
 
     [Fact]
     public void InvalidBatchKeepsTheRowInTheErrorPath()
     {
-        var schema = V.Array(V.Item().Property("weight", V.Integer()));
+        var schema = V.Items(V.Item().Property("weight", V.Integer()));
         const string aml = "<AML><Item><weight>3</weight></Item>" +
             "<Item><weight>bad</weight></Item></AML>";
 
@@ -140,7 +140,7 @@ public sealed class ParsingTests
     [InlineData("<!DOCTYPE Item [<!ENTITY text 'value'>]><Item>&text;</Item>")]
     public void InvalidAmlCannotReturnParsedValues(string aml)
     {
-        var schema = V.Array(V.Item());
+        var schema = V.Items(V.Item());
         var asserted = Assert.Throws<ValidationException>(() => V.AssertInput(schema, aml));
         var parsed = Assert.Throws<ValidationException>(() => V.ParseInput(schema, aml));
         Assert.Equal(asserted.GetErrorString(), parsed.GetErrorString());
@@ -150,7 +150,7 @@ public sealed class ParsingTests
     public void NestedAndBatchErrorsAreCollectedTogether()
     {
         var part = V.Item("Part").ID(V.Guid()).Property("weight", V.Double().Min(0.0));
-        var schema = V.Array(V.Item().Property("related_id", part)).Max(1);
+        var schema = V.Items(V.Item().Property("related_id", part)).Max(1);
         const string aml = "<AML><Item><related_id>id-only</related_id></Item>" +
             "<Item><related_id><Item type='Part' id='wrong'><weight>-1</weight></Item>" +
             "</related_id></Item></AML>";

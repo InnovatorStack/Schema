@@ -6,8 +6,7 @@ namespace InnovatorSchema;
 /// <summary>An Item with declared properties and attributes.</summary>
 public sealed class ItemSchema : Schema
 {
-    private static readonly ScalarSchema<string> ArasId =
-        new(ScalarReaders.ReadId, "must be a valid Aras ID.");
+    private static readonly ScalarSchema<string> ArasId = Validator.Guid();
 
     private readonly string? type;
     private readonly Schema? idSchema;
@@ -21,7 +20,7 @@ public sealed class ItemSchema : Schema
     }
 
     private ItemSchema(string? type, Schema? idSchema, Binding[] fields,
-        Presence presence, int depth, bool quotesSql = false) : base(presence, depth, quotesSql)
+        Presence presence, int depth) : base(presence, depth)
     {
         this.type = type;
         this.idSchema = idSchema;
@@ -48,13 +47,13 @@ public sealed class ItemSchema : Schema
             throw new ArgumentException("An ID rule requires a nonblank value.", nameof(schema));
         }
 
-        if (schema.QuotesSql)
+        if (schema.TransformsValue)
         {
             throw new ArgumentException("An ID rule must preserve the ID value.", nameof(schema));
         }
 
         return ReferenceEquals(idSchema, schema) ? this :
-            new ItemSchema(type, schema, fields, FieldPresence, Depth, QuotesSql);
+            new ItemSchema(type, schema, fields, FieldPresence, Depth);
     }
 
     /// <summary>Check the named AML attribute.</summary>
@@ -62,7 +61,8 @@ public sealed class ItemSchema : Schema
     {
         if (schema is ItemSchema)
         {
-            throw new ArgumentException("An attribute requires a scalar schema.", nameof(schema));
+            throw new ArgumentException("Use a scalar or array schema for an attribute.",
+                nameof(schema));
         }
 
         return Add(name, schema, true);
@@ -90,7 +90,7 @@ public sealed class ItemSchema : Schema
     private ItemSchema WithPresence(Presence presence)
     {
         return FieldPresence == presence ? this :
-            new ItemSchema(type, idSchema, fields, presence, Depth, QuotesSql);
+            new ItemSchema(type, idSchema, fields, presence, Depth);
     }
 
     private ItemSchema Add(string name, Schema schema, bool attribute)
@@ -122,7 +122,7 @@ public sealed class ItemSchema : Schema
         fields.CopyTo(next, 0);
         next[^1] = new Binding(name, schema, attribute);
         return new ItemSchema(type, idSchema, next, FieldPresence,
-            Math.Max(Depth, schema.Depth + 1), QuotesSql || schema.QuotesSql);
+            Math.Max(Depth, schema.Depth + 1));
     }
 
     internal int FindField(string name, bool attribute)
@@ -136,28 +136,6 @@ public sealed class ItemSchema : Schema
         }
 
         return -1;
-    }
-
-    internal void QuoteSqlValues(object?[] values, Func<string, string> escapeSqlValue)
-    {
-        for (int index = 0; index < fields.Length; index++)
-        {
-            if (!fields[index].Schema.QuotesSql)
-            {
-                continue;
-            }
-
-            if (values[index] is ParsedItem child)
-            {
-                child.QuoteSqlValues(escapeSqlValue);
-            }
-            else if (values[index] is string text)
-            {
-                string escaped = escapeSqlValue(text) ??
-                    throw new InvalidOperationException("The SQL escaping function returned null.");
-                values[index] = "N'" + escaped + "'";
-            }
-        }
     }
 
     internal override object? Read(FieldInput input, ValidationContext context, bool capture)

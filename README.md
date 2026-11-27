@@ -14,7 +14,8 @@ V.AssertInput(schema, this);
 ```
 
 Declared fields are required. `.Optional()` accepts missing or null values and preserves
-empty strings. `V.Array(schema)` checks a whole collection. Extra fields are allowed.
+empty strings. `V.Items(schema)` checks a whole Item collection. Use `V.Array()`
+for a delimited field. Extra fields are allowed.
 
 Use `ParseInput` to read validated values and get the Item's Innovator instance.
 

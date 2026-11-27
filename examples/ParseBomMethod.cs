@@ -8,7 +8,7 @@ var line = V.Item("Part BOM")
     .Property("reference_designator", V.String().MaxLength(64).Optional())
     .Property("related_id", part);
 
-var (lines, inn) = V.ParseInput(V.Array(line).Min(1).Max(100), this);
+var (lines, inn) = V.ParseInput(V.Items(line).Min(1).Max(100), this);
 var summary = new System.Text.StringBuilder();
 var culture = System.Globalization.CultureInfo.InvariantCulture;
 double total = 0;

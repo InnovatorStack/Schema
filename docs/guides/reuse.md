@@ -8,5 +8,5 @@ var part = V.Item("Part").ID()
     .Property("item_number", V.String().MaxLength(64));
 
 var update = part.Attribute("action", V.String().OneOf("edit", "update"));
-var lot = V.Array(part).Max(50);
+var lot = V.Items(part).Max(50);
 ```

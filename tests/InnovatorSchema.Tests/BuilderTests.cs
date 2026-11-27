@@ -102,7 +102,8 @@ public sealed class BuilderTests
         Assert.Throws<ArgumentException>(() => V.String().Default(" "));
         Assert.Throws<ArgumentException>(() => V.Double().Min(0.0).Default(-1.0));
         Assert.Throws<ArgumentException>(() => V.Double().Default(double.NaN));
-        Assert.Throws<ArgumentException>(() => V.Guid().Default(Guid.Empty));
+        Assert.Throws<ArgumentException>(() =>
+            V.Guid().Default("00000000000000000000000000000000"));
     }
 
     [Fact]

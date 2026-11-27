@@ -7,51 +7,28 @@ namespace InnovatorSchema;
 
 internal static class InputAssertion
 {
-    public static void Assert(ItemSchema item, ItemArraySchema? array, object? input)
+    public static void Assert(ItemSchema item, ItemsSchema? items, object? input)
     {
-        Read(item, array, input, results: null);
+        Read(item, items, input, results: null);
     }
 
-    public static (ParsedItem Input, object? Innovator) Parse(ItemSchema item, object? input,
-        Func<string, string>? escapeSqlValue)
+    public static (ParsedItem Input, object? Innovator) Parse(ItemSchema item, object? input)
     {
         var results = new List<ParsedItem>(1);
         IomItem? iom = Read(item, null, input, results);
-        QuoteSqlValues(item, results, escapeSqlValue);
         return results.Count == 1 ? (results[0], iom?.Innovator) :
             throw new InvalidOperationException("The validated input did not produce an Item.");
     }
 
     public static (IReadOnlyList<ParsedItem> Input, object? Innovator) Parse(
-        ItemArraySchema array, object? input, Func<string, string>? escapeSqlValue)
+        ItemsSchema items, object? input)
     {
         var results = new List<ParsedItem>();
-        IomItem? iom = Read(array.Item, array, input, results);
-        QuoteSqlValues(array.Item, results, escapeSqlValue);
+        IomItem? iom = Read(items.Item, items, input, results);
         return (results.AsReadOnly(), iom?.Innovator);
     }
 
-    private static void QuoteSqlValues(ItemSchema item, List<ParsedItem> results,
-        Func<string, string>? escapeSqlValue)
-    {
-        if (!item.QuotesSql)
-        {
-            return;
-        }
-
-        if (escapeSqlValue is null)
-        {
-            throw new ArgumentNullException(nameof(escapeSqlValue),
-                "Supply a SQL escaping function when the schema uses SqlQuoted().");
-        }
-
-        foreach (ParsedItem result in results)
-        {
-            result.QuoteSqlValues(escapeSqlValue);
-        }
-    }
-
-    private static IomItem? Read(ItemSchema item, ItemArraySchema? array, object? input,
+    private static IomItem? Read(ItemSchema item, ItemsSchema? items, object? input,
         List<ParsedItem>? results)
     {
         var context = new ValidationContext();
@@ -59,7 +36,7 @@ internal static class InputAssertion
 
         if (input is string aml)
         {
-            ReadAml(item, array, aml, context, results);
+            ReadAml(item, items, aml, context, results);
         }
         else if (input is null)
         {
@@ -69,7 +46,7 @@ internal static class InputAssertion
         else
         {
             var source = IomItem.Read(input);
-            ReadIom(item, array, source, context, results);
+            ReadIom(item, items, source, context, results);
             iom = source;
         }
 
@@ -77,7 +54,7 @@ internal static class InputAssertion
         return iom;
     }
 
-    private static void ReadAml(ItemSchema item, ItemArraySchema? array, string aml,
+    private static void ReadAml(ItemSchema item, ItemsSchema? items, string aml,
         ValidationContext context, List<ParsedItem>? results)
     {
         XmlElement? root = Load(aml, context);
@@ -89,9 +66,9 @@ internal static class InputAssertion
 
         if (FieldInput.IsElement(root, "Item"))
         {
-            if (CheckCount(1, array, context))
+            if (CheckCount(1, items, context))
             {
-                ReadRow(item, array, root, null, 0, context, results);
+                ReadRow(item, items, root, null, 0, context, results);
             }
 
             return;
@@ -106,7 +83,7 @@ internal static class InputAssertion
 
         int count = Count(root, context);
 
-        if (!CheckCount(count, array, context))
+        if (!CheckCount(count, items, context))
         {
             return;
         }
@@ -122,7 +99,7 @@ internal static class InputAssertion
                     return;
                 }
 
-                ReadRow(item, array, element, null, index++, context, results);
+                ReadRow(item, items, element, null, index++, context, results);
             }
         }
     }
@@ -195,7 +172,7 @@ internal static class InputAssertion
         return count;
     }
 
-    private static void ReadIom(ItemSchema item, ItemArraySchema? array, IomItem input,
+    private static void ReadIom(ItemSchema item, ItemsSchema? items, IomItem input,
         ValidationContext context, List<ParsedItem>? results)
     {
         int count = input.Count;
@@ -207,7 +184,7 @@ internal static class InputAssertion
             return;
         }
 
-        if (!CheckCount(count, array, context))
+        if (!CheckCount(count, items, context))
         {
             return;
         }
@@ -215,12 +192,12 @@ internal static class InputAssertion
         for (int index = 0; index < count && context.Step(); index++)
         {
             IomItem row = input.At(index);
-            ReadRow(item, array, row.Element, row, index, context, results);
+            ReadRow(item, items, row.Element, row, index, context, results);
         }
     }
 
     private static bool CheckCount(
-        int count, ItemArraySchema? array, ValidationContext context)
+        int count, ItemsSchema? items, ValidationContext context)
     {
         if (count < 0)
         {
@@ -234,9 +211,9 @@ internal static class InputAssertion
             return false;
         }
 
-        if (array is not null)
+        if (items is not null)
         {
-            array.ValidateCount(count, context);
+            items.ValidateCount(count, context);
             return true;
         }
 
@@ -249,10 +226,10 @@ internal static class InputAssertion
         return true;
     }
 
-    private static void ReadRow(ItemSchema item, ItemArraySchema? array, XmlElement? node,
+    private static void ReadRow(ItemSchema item, ItemsSchema? items, XmlElement? node,
         IomItem? iom, int index, ValidationContext context, List<ParsedItem>? results)
     {
-        using var scope = array is null ? default(ValidationContext.Scope) : context.Enter(index);
+        using var scope = items is null ? default(ValidationContext.Scope) : context.Enter(index);
 
         if (node is null || !FieldInput.IsElement(node, "Item"))
         {

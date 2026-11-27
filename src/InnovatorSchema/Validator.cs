@@ -28,10 +28,24 @@ public static class Validator
     }
 
     /// <summary>Require every supplied Item to satisfy the same schema.</summary>
-    public static ItemArraySchema Array(ItemSchema item)
+    public static ItemsSchema Items(ItemSchema item)
     {
         ArgumentNullException.ThrowIfNull(item);
-        return new ItemArraySchema(item);
+        return new ItemsSchema(item);
+    }
+
+    /// <summary>Read a property or attribute containing delimited scalar values.</summary>
+    public static ArraySchema<T> Array<T>(ScalarSchema<T> element, string delimiter)
+    {
+        ArgumentNullException.ThrowIfNull(element);
+        ArgumentNullException.ThrowIfNull(delimiter);
+
+        if (delimiter.Length == 0)
+        {
+            throw new ArgumentException("Use a nonempty delimiter.", nameof(delimiter));
+        }
+
+        return new ArraySchema<T>(element, delimiter);
     }
 
     /// <summary>Require nonblank AML text.</summary>
@@ -67,33 +81,30 @@ public static class Validator
     }
 
     /// <summary>Require a nonzero, 32-character Aras GUID.</summary>
-    public static ScalarSchema<Guid> Guid()
+    public static ScalarSchema<string> Guid()
     {
-        return new ScalarSchema<Guid>(ScalarReaders.ReadGuid, "must be a valid Aras ID.");
+        return new ScalarSchema<string>(ScalarReaders.ReadId, "must be a valid Aras ID.");
     }
 
     /// <summary>Read one Item and its Innovator instance, if supplied as IOM.</summary>
     /// <param name="schema">The schema for the Item.</param>
     /// <param name="input">An IOM Item or AML text.</param>
-    /// <param name="escapeSqlValue">Aras QuoteValue for fields declared with SqlQuoted.</param>
     /// <exception cref="ValidationException">The input fails validation.</exception>
-    public static (dynamic Input, dynamic? Innovator) ParseInput(ItemSchema schema, object? input,
-        Func<string, string>? escapeSqlValue = null)
+    public static (dynamic Input, dynamic? Innovator) ParseInput(ItemSchema schema, object? input)
     {
         ArgumentNullException.ThrowIfNull(schema);
-        return InputAssertion.Parse(schema, input, escapeSqlValue);
+        return InputAssertion.Parse(schema, input);
     }
 
     /// <summary>Read a collection and its Innovator instance, if supplied as IOM.</summary>
     /// <param name="schema">The schema for the Items.</param>
     /// <param name="input">An IOM Item or AML text.</param>
-    /// <param name="escapeSqlValue">Aras QuoteValue for fields declared with SqlQuoted.</param>
     /// <exception cref="ValidationException">The input fails validation.</exception>
     public static (IReadOnlyList<dynamic> Input, dynamic? Innovator) ParseInput(
-        ItemArraySchema schema, object? input, Func<string, string>? escapeSqlValue = null)
+        ItemsSchema schema, object? input)
     {
         ArgumentNullException.ThrowIfNull(schema);
-        return InputAssertion.Parse(schema, input, escapeSqlValue);
+        return InputAssertion.Parse(schema, input);
     }
 
     /// <summary>Assert exactly one Item supplied as AML text or an IOM Item.</summary>
@@ -106,7 +117,7 @@ public static class Validator
 
     /// <summary>Assert the complete collection supplied as AML text or an IOM Item.</summary>
     /// <exception cref="ValidationException">The input fails validation.</exception>
-    public static void AssertInput(ItemArraySchema schema, object? input)
+    public static void AssertInput(ItemsSchema schema, object? input)
     {
         ArgumentNullException.ThrowIfNull(schema);
         InputAssertion.Assert(schema.Item, schema, input);

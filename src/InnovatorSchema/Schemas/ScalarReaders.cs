@@ -42,16 +42,10 @@ internal static class ScalarReaders
             DateTimeStyles.None, out value) ? null : "Expected yyyy-MM-dd or yyyy-MM-ddTHH:mm:ss.";
     }
 
-    public static string? ReadGuid(string text, out Guid value)
-    {
-        value = Guid.Empty;
-        return text.Length == 32 && Guid.TryParseExact(text, "N", out value) &&
-            value != Guid.Empty ? null : "Expected a nonzero, 32-character Aras GUID.";
-    }
-
     public static string? ReadId(string text, out string value)
     {
         value = text;
-        return ReadGuid(text, out _);
+        return text.Length == 32 && Guid.TryParseExact(text, "N", out Guid id) &&
+            id != Guid.Empty ? null : "Expected a nonzero, 32-character Aras GUID.";
     }
 }

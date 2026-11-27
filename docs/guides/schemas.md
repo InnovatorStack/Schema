@@ -2,8 +2,8 @@
 
 `Item("Part")` requires a Part. Use `Item()` when the Item type can vary.
 Add `.ID()` to require a valid 32-character Aras ID. `ParseInput` returns the original
-ID text. Use `.ID(V.Guid())` when you want a `Guid` value. For an `add` that lets Aras
-generate an ID, leave the rule off.
+ID text. Use `V.Guid()` for a field that contains an Aras ID. For an `add` that lets
+Aras generate an ID, leave the ID rule off.
 
 ```csharp
 var schema = V.Item()

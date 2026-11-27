@@ -14,15 +14,23 @@ by name or with dot syntax. The second value is the Innovator instance from the 
 
 ## SQL string values
 
-Use `.SqlQuoted()` to return a SQL Server Unicode string literal. Pass the Method's
-Aras `QuoteValue` function to `ParseInput`.
+Use `.SqlQuoted()` to escape apostrophes and surround the value with single quotes.
+Use `.SqlQuoted(false)` to return only the escaped text.
 
 ```csharp
-var schema = V.Item().Property("item_number", V.String().MaxLength(64).SqlQuoted());
-var (item, inn) = V.ParseInput(schema, this, CCO.DB.InnDatabase.QuoteValue);
-return inn.newResult(item.item_number);
+var schema = V.Item()
+    .ID()
+    .Attribute("idList", V.Array(V.Guid().SqlQuoted(), ","))
+    .Property("item_number", V.String().SqlQuoted())
+    .Property("type", V.String().SqlQuoted(false));
+
+var (item, inn) = V.ParseInput(schema, this);
+string[] ids = item["@idList"];
+string itemNumber = item.item_number;
+string type = item.type;
 ```
 
-`O'Brien` becomes `N'O''Brien'`. Rules check the original text, then parsing escapes
-it and adds the `N` prefix and outer quotes. Optional nulls remain `null`. `AssertInput` only
-validates the input and takes no escaping function.
+`O'Brien` becomes `'O''Brien'` with `.SqlQuoted()` and `O''Brien` with
+`.SqlQuoted(false)`. In the second form, supply the surrounding SQL quotes yourself.
+Rules check the original text. Optional nulls remain `null`. Arrays quote each element
+individually and return the array.

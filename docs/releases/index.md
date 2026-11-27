@@ -2,6 +2,14 @@
 
 [Downloads](https://github.com/InnovatorStack/Schema/releases)
 
+## Upgrading to 0.7.0
+
+- Use `V.Items(itemSchema)` for Item collections and `V.Array(element, delimiter)`
+  for delimited fields.
+- `V.Guid()` returns the original validated string.
+- Call `ParseInput(schema, input)` for schemas that use `.SqlQuoted()`. Quoted values
+  use plain single quotes. `.SqlQuoted(false)` returns the escaped text.
+
 ## Upgrading to 0.6.0
 
 - Replace `V.Enum(...)` and `V.String().Enum(...)` with `V.String().OneOf(...)`.

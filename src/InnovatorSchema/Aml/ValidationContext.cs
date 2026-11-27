@@ -131,14 +131,23 @@ internal sealed class ValidationContext
 
     private string UserPrefix(string? fieldSeparator)
     {
-        if (fieldSeparator is null || path.Count == 0 || path[^1].Name is not string name)
+        if (fieldSeparator is null)
         {
             return string.Empty;
         }
 
-        string label = path[^1].Attribute && name == "id" ? "ID" :
-            Capitalize(name.Replace('_', ' '));
-        return label + fieldSeparator;
+        for (int index = path.Count - 1; index >= 0; index--)
+        {
+            Segment segment = path[index];
+            if (segment.Name is string name)
+            {
+                string label = segment.Attribute && name == "id" ? "ID" :
+                    Capitalize(name.Replace('_', ' '));
+                return label + fieldSeparator;
+            }
+        }
+
+        return string.Empty;
     }
 
     private static string Capitalize(string text)

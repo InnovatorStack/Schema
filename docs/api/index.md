@@ -14,8 +14,8 @@ var part = V.Item("Part")
 
 `Item("Part")` requires the exact type. `Item()` accepts any Item type.
 `ID()` requires a valid Aras ID and returns its original text when parsing.
-Use `ID(V.Guid())` to parse it as a `Guid`. A nested Item's `ID()` checks that Item's
-own ID. `Attribute` and `Property` add a field to a new schema. Extra fields are allowed.
+A nested Item's `ID()` checks that Item's own ID. `Attribute` and `Property` add a
+field to a new schema. Extra fields are allowed.
 
 ## Scalars
 
@@ -26,7 +26,7 @@ own ID. `Attribute` and `Property` add a field to a new schema. Extra fields are
 | `V.Integer()` | Signed 64-bit integer text |
 | `V.Double()` | Finite floating-point text with a period as the decimal separator |
 | `V.Date()` | `yyyy-MM-dd` or `yyyy-MM-ddTHH:mm:ss` |
-| `V.Guid()` | Exactly 32 hex characters in either case, with at least one nonzero digit |
+| `V.Guid()` | A string of exactly 32 hex characters, with at least one nonzero digit |
 
 `Min` and `Max` set inclusive bounds on values and collection sizes. Use
 `MinLength` or `MaxLength` for a one-sided string length, `Length(20)` for an exact
@@ -49,14 +49,31 @@ var priority = V.Integer().OneOf(1, 3, 5);
 var isTest = V.Bool().Default(false);
 ```
 
-## Collections
+## Item collections
 
 ```csharp
-var batch = V.Array(V.Item("Part").ID()).Min(1).Max(50);
+var batch = V.Items(V.Item("Part").ID()).Min(1).Max(50);
 ```
 
-A single supplied Item is a collection of one for `V.Array`. An empty AML collection or
+A single supplied Item is a collection of one for `V.Items`. An empty AML collection or
 IOM “No Items Found” result has zero rows.
+
+## Delimited fields
+
+`V.Array(element, delimiter)` reads a property or attribute into a typed C# array.
+The delimiter is literal. Each value is validated in order and keeps its whitespace.
+Use `Min` and `Max` to bound the element count. An empty field returns an empty array.
+An omitted or explicitly null optional field returns `null`.
+
+```csharp
+var schema = V.Item().Attribute("idList", V.Array(V.Guid(), ",").Min(1));
+var aml = "<Item idList='783BA98DA5D04BF9AF4B1760826221F0,938599daaae34871bfa51167c242db12'/>";
+var (item, _) = V.ParseInput(schema, aml);
+string[] ids = item["@idList"];
+```
+
+Invalid values are reported at paths such as `$.@idList[1]`. Empty entries between
+delimiters are checked by the element schema like any other supplied value.
 
 ## AssertInput
 
@@ -96,19 +113,18 @@ Use `item.item_number` or `item["item_number"]` for a property, and `item["@acti
 for a declared attribute. Use brackets for names such as `part-number`. Nested Items
 use the same access, as in `item.related_id.item_number`. An ID rule supplies
 `item.id` and `item["@id"]`
-when the corresponding property or attribute has no explicit rule. Plain `.ID()`
-yields text and `.ID(V.Guid())` yields a `Guid`.
+when the corresponding property or attribute has no explicit rule.
 
-The result resolves field names at runtime. String yields `string`, Bool yields `bool`,
-Integer yields `long`, Double yields `double`, Date yields `DateTime`, and Guid yields
-`Guid`. An omitted or explicitly null optional field yields `null`.
+The result resolves field names at runtime. String and Guid yield `string`, Bool yields
+`bool`, Integer yields `long`, Double yields `double`, and Date yields `DateTime`.
+An omitted or explicitly null optional field yields `null`.
 An empty optional string yields `""`.
-The result is a read-only snapshot of those values.
+Parsed values are captured independently of the original AML or IOM Item.
 
-Pass an array schema to get an indexed list of parsed Items.
+Pass an Items schema to get an indexed list of parsed Items.
 
 ```csharp
-var schema = V.Array(V.Item("Part").Property("weight", V.Integer())).Min(1).Max(20);
+var schema = V.Items(V.Item("Part").Property("weight", V.Integer())).Min(1).Max(20);
 var (parts, _) = V.ParseInput(schema, "<AML><Item type='Part'><weight>4</weight></Item></AML>");
 long weight = parts[0].weight;
 ```

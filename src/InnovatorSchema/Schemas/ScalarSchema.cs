@@ -12,6 +12,7 @@ public sealed class ScalarSchema<T> : Schema
     private readonly string? readRequirement;
     private readonly Rule[] rules;
     private readonly DefaultValue? fallback;
+    private readonly Func<T, T>? transform;
 
     internal ScalarSchema(ScalarReader<T> read, string? readRequirement = null)
         : this(read, readRequirement, Array.Empty<Rule>(), Presence.Required, null)
@@ -19,16 +20,18 @@ public sealed class ScalarSchema<T> : Schema
     }
 
     private ScalarSchema(ScalarReader<T> read, string? readRequirement, Rule[] rules,
-        Presence presence, DefaultValue? fallback, bool quotesSql = false)
-        : base(presence, 1, quotesSql)
+        Presence presence, DefaultValue? fallback, Func<T, T>? transform = null)
+        : base(presence, 1)
     {
         this.read = read;
         this.readRequirement = readRequirement;
         this.rules = rules;
         this.fallback = fallback;
+        this.transform = transform;
     }
 
     internal bool RequiresValue => FieldPresence == Presence.Required && fallback is null;
+    internal bool TransformsValue => transform is not null;
 
     /// <summary>Allow missing and null values. Preserve empty strings on text fields.</summary>
     public override ScalarSchema<T> Optional()
@@ -59,7 +62,7 @@ public sealed class ScalarSchema<T> : Schema
         }
 
         return new ScalarSchema<T>(read, readRequirement, rules, FieldPresence, new(value),
-            QuotesSql);
+            transform);
     }
 
     /// <summary>Require the parsed value to match one of the supplied choices.</summary>
@@ -106,10 +109,9 @@ public sealed class ScalarSchema<T> : Schema
             replaceLast: true);
     }
 
-    internal ScalarSchema<T> WithSqlQuoting()
+    internal ScalarSchema<T> WithTransform(Func<T, T> project)
     {
-        return QuotesSql ? this :
-            new ScalarSchema<T>(read, readRequirement, rules, FieldPresence, fallback, true);
+        return new ScalarSchema<T>(read, readRequirement, rules, FieldPresence, fallback, project);
     }
 
     private static string FormatChoice(T value)
@@ -117,7 +119,6 @@ public sealed class ScalarSchema<T> : Schema
         return value switch
         {
             bool flag => flag ? "1" : "0",
-            Guid id => id.ToString("N"),
             DateTime date => date.ToString("yyyy-MM-dd'T'HH:mm:ss", CultureInfo.InvariantCulture),
             string { Length: 0 } => "an empty string",
             _ => Convert.ToString(value, CultureInfo.InvariantCulture) ?? string.Empty
@@ -136,7 +137,7 @@ public sealed class ScalarSchema<T> : Schema
             throw new InvalidOperationException("An empty string default requires Optional().");
         }
 
-        return new ScalarSchema<T>(read, readRequirement, rules, presence, fallback, QuotesSql);
+        return new ScalarSchema<T>(read, readRequirement, rules, presence, fallback, transform);
     }
 
     internal ScalarSchema<T> Check(Func<T, bool> check, string requirement,
@@ -162,7 +163,7 @@ public sealed class ScalarSchema<T> : Schema
         var next = new Rule[count];
         rules.CopyTo(next, 0);
         next[^1] = rule;
-        return new ScalarSchema<T>(read, readRequirement, next, FieldPresence, fallback, QuotesSql);
+        return new ScalarSchema<T>(read, readRequirement, next, FieldPresence, fallback, transform);
     }
 
     private static void CheckDefault(Rule rule, T value)
@@ -184,45 +185,60 @@ public sealed class ScalarSchema<T> : Schema
         {
             if (fallback is DefaultValue current)
             {
-                return capture ? current.Value : null;
+                return capture ? Transform(current.Value) : null;
             }
 
             FieldInput.CheckMissing(FieldPresence != Presence.Required, context);
             return null;
         }
 
-        if (!AcceptsText(text))
+        if (FieldPresence == Presence.LegacyNullish && string.IsNullOrWhiteSpace(text))
         {
-            if (FieldPresence != Presence.LegacyNullish)
-            {
-                context.Add("A nonblank value is required.", readRequirement ?? "cannot be blank.");
-            }
-
             return null;
         }
 
-        string? error = read(text, out T value);
+        return TryReadValue(text, context, out T value) && capture ? Transform(value) : null;
+    }
+
+    internal bool TryReadValue(string text, ValidationContext context, out T value)
+    {
+        if (!AcceptsText(text))
+        {
+            context.Add("A nonblank value is required.", readRequirement ?? "cannot be blank.");
+            value = default!;
+            return false;
+        }
+
+        string? error = read(text, out value);
 
         if (error is not null)
         {
             context.Add(error, readRequirement);
-            return null;
+            return false;
         }
+
+        bool valid = true;
 
         foreach (Rule rule in rules)
         {
             if (!context.Step())
             {
-                return null;
+                return false;
             }
 
             if (!rule.Check(value))
             {
                 context.AddRule(rule.Requirement, rule.CustomMessage);
+                valid = false;
             }
         }
 
-        return capture ? value : null;
+        return valid;
+    }
+
+    internal T Transform(T value)
+    {
+        return transform is null ? value : transform(value);
     }
 
     private bool AcceptsText(string text)
@@ -236,9 +252,9 @@ public sealed class ScalarSchema<T> : Schema
         return value switch
         {
             null => false,
-            string text => text.Length <= Limits.Characters && AcceptsText(text),
+            string text => text.Length <= Limits.Characters && AcceptsText(text) &&
+                read(text, out _) is null,
             double number => double.IsFinite(number),
-            Guid id => id != Guid.Empty,
             _ => true
         };
     }

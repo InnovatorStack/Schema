@@ -3,16 +3,14 @@ namespace InnovatorSchema;
 /// <summary>A rule for a declared AML value.</summary>
 public abstract class Schema
 {
-    private protected Schema(Presence presence, int depth, bool quotesSql = false)
+    private protected Schema(Presence presence, int depth)
     {
         FieldPresence = presence;
         Depth = depth;
-        QuotesSql = quotesSql;
     }
 
     private protected Presence FieldPresence { get; }
     internal int Depth { get; }
-    internal bool QuotesSql { get; }
 
     /// <summary>Allow a missing or null field.</summary>
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Naming", "CA1716",

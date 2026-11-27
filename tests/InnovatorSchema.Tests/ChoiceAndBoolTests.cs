@@ -59,7 +59,7 @@ public sealed class ChoiceAndBoolTests
         var schema = V.Item().Property("quantity", V.Integer().OneOf(1, 3, 5))
             .Property("weight", V.Double().OneOf(1.5, 2.0))
             .Property("effective_date", V.Date().OneOf(date))
-            .Property("reference", V.Guid().OneOf(Guid.ParseExact(id, "N")))
+            .Property("reference", V.Guid().OneOf(id).Insensitive())
             .Property("is_test", V.Bool().OneOf(true));
         string aml = "<Item><quantity>03</quantity><weight>1.50</weight>" +
             "<effective_date>2026-11-27T00:00:00</effective_date>" +
@@ -69,7 +69,7 @@ public sealed class ChoiceAndBoolTests
         Assert.Equal(3L, Assert.IsType<long>((object)parsed.quantity));
         Assert.Equal(1.5, Assert.IsType<double>((object)parsed.weight));
         Assert.Equal(date, Assert.IsType<DateTime>((object)parsed.effective_date));
-        Assert.Equal(Guid.ParseExact(id, "N"), Assert.IsType<Guid>((object)parsed.reference));
+        Assert.Equal(id.ToLowerInvariant(), Assert.IsType<string>((object)parsed.reference));
         Assert.True(Assert.IsType<bool>((object)parsed.is_test));
         var error = Assert.Throws<ValidationException>(() => V.AssertInput(schema,
             aml.Replace("<quantity>03", "<quantity>2", StringComparison.Ordinal)

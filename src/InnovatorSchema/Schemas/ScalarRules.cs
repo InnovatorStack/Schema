@@ -82,11 +82,18 @@ public static class ScalarRules
         return schema.CompareChoices(StringComparer.OrdinalIgnoreCase);
     }
 
-    /// <summary>Return a SQL literal using the escape function supplied to ParseInput.</summary>
-    public static ScalarSchema<string> SqlQuoted(this ScalarSchema<string> schema)
+    /// <summary>Double apostrophes and optionally surround the result with single quotes.</summary>
+    public static ScalarSchema<string> SqlQuoted(this ScalarSchema<string> schema,
+        bool outerQuotes = true)
     {
         ArgumentNullException.ThrowIfNull(schema);
-        return schema.WithSqlQuoting();
+        return schema.WithTransform(outerQuotes ?
+            static value => "'" + EscapeApostrophes(value) + "'" : EscapeApostrophes);
+    }
+
+    private static string EscapeApostrophes(string value)
+    {
+        return value.Replace("'", "''", StringComparison.Ordinal);
     }
 
     private static void CheckBound<T>(T value)

@@ -33,7 +33,7 @@ public sealed class ArasIntegrationTests
     [Fact]
     public void IomSelectionUsesTheSameRulesAsAmlWithoutMutatingInput()
     {
-        var schema = V.Array(V.Item("Part").ID().Property("custom", V.Item("Part").ID()));
+        var schema = V.Items(V.Item("Part").ID().Property("custom", V.Item("Part").ID()));
         var item = ItemFrom($"<AML><Item type='Part' id='{PartId}'><custom>" +
             $"<Item type='Part' id='{RelatedId}'/></custom></Item>" +
             $"<Item type='Part' id='{RelatedId}'><custom><Item type='Part'/></custom></Item>" +
@@ -53,11 +53,11 @@ public sealed class ArasIntegrationTests
     {
         var item = ItemFrom($"<AML><Item type='Document'/><Item type='Part' id='{PartId}'/></AML>");
         var selection = item.getItemsByXPath("//Item[@type='Part']");
-        V.AssertInput(V.Array(V.Item("Part").ID()), selection);
+        V.AssertInput(V.Items(V.Item("Part").ID()), selection);
         V.AssertInput(V.Item("Part").ID(), selection);
         string id = V.ParseInput(V.Item("Part").ID(), selection).Input.id;
         Assert.Equal(PartId, id);
-        var (parts, inn) = V.ParseInput(V.Array(V.Item("Part").ID()), selection);
+        var (parts, inn) = V.ParseInput(V.Items(V.Item("Part").ID()), selection);
         string firstId = Assert.Single(parts).id;
         Assert.Equal(PartId, firstId);
         Assert.IsType<Innovator>((object?)inn);
@@ -113,7 +113,7 @@ public sealed class ArasIntegrationTests
     public void ARegularIomErrorCannotPassAnArrayAssertion()
     {
         var item = OfflineConnection.CreateInnovator().newError("An operation failed.");
-        Assert.Throws<ValidationException>(() => V.AssertInput(V.Array(V.Item()), item));
+        Assert.Throws<ValidationException>(() => V.AssertInput(V.Items(V.Item()), item));
     }
 
     [Fact]
@@ -125,8 +125,8 @@ public sealed class ArasIntegrationTests
             "<faultstring>No items found.</faultstring></SOAP-ENV:Fault></SOAP-ENV:Body>" +
             "</SOAP-ENV:Envelope>");
         Assert.Equal(0, item.getItemCount());
-        V.AssertInput(V.Array(V.Item("Part")), item);
-        Assert.Empty(V.ParseInput(V.Array(V.Item("Part")), item).Input);
+        V.AssertInput(V.Items(V.Item("Part")), item);
+        Assert.Empty(V.ParseInput(V.Items(V.Item("Part")), item).Input);
         Assert.Throws<ValidationException>(() => V.AssertInput(V.Item("Part"), item));
     }
 
